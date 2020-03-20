@@ -1,6 +1,9 @@
+# This docker-compose file exists for development purposes. The one used in production can be found here:
+# https://github.com/Yuruh/Yuruh/blob/master/docker-compose.diary.yml
+
 version: "3.5"
 services:
-  postgres:
+  diary-postgres:
     image: "postgres:12.1"
     ports:
       - 5432:5432
@@ -18,7 +21,7 @@ services:
       - 1500:80
     volumes:
       - pgadmin-data:/var/lib/pgadmin
-  api:
+  diary-api:
     #network_mode: host
     environment:
       - DB_HOST=postgres
@@ -28,7 +31,7 @@ services:
     ports:
       - 8080:8080
     depends_on:
-      - postgres
+      - diary-postgres
 
 volumes:
   pgadmin-data:
