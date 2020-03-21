@@ -28,10 +28,19 @@ services:
     build: "."
     volumes:
       - ./src:/usr/src/diary/src
+      - ${PWD}/openapi.yml:/usr/src/diary/openapi.yml
     ports:
       - 8080:8080
     depends_on:
       - diary-postgres
-
+  diary-doc:
+    image: "redocly/redoc"
+    environment:
+      - PAGE_TITLE=API Doc - Encrypted Diary
+      #- PAGE_FAVICON=url
+      - REDOC_OPTIONS=hide-download-button
+      - SPEC_URL=http://localhost:8080/openapi.yml
+    ports:
+      - "8082:80"
 volumes:
   pgadmin-data:

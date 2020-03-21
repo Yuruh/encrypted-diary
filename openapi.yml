@@ -1,0 +1,152 @@
+components:
+  parameters: {}
+  responses: {}
+  schemas:
+    PartialEntry:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          description: "Format: YYYY-MM-DD"
+        title:
+          type: string
+          maxLength: 500
+        content:
+          type: string
+          description: "Diary Entry content. Encrypted. Markdown format."
+    Entry:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        date:
+          type: string
+          format: date
+          description: "Format: YYYY-MM-DD"
+        title:
+          type: string
+          maxLength: 500
+        content:
+          type: string
+          description: "Diary Entry content. Encrypted. Markdown format."
+# We'll see later on how we add tags
+#        labels:
+#          type: array
+#          items:
+#            $ref: "#/components/schemas/Label"
+#          default: []
+    Label:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        value:
+          type: string
+          maxLength: 100
+        color:
+          type: string
+          format: hex
+
+  securitySchemes:
+    Bearer Authentication:
+      bearerFormat: JWT
+      description: |-
+        **For Web or Mobile clients**
+
+        Request Headers must contain `Authorization: Bearer <access token>`
+      scheme: bearer
+      type: http
+info:
+  description: API Description
+  title: Encrypted Diary API Specification
+  version: 0.0.0
+  x-logo:
+    altText: Logo
+    url: https://us.123rf.com/450wm/bessyana/bessyana1911/bessyana191100018/137324124-black-and-white-locked-diary-girl-secret-journal-fairy-tale-theme-vector-illustration-for-icon-stamp.jpg?ver=6
+openapi: 3.0.0
+paths:
+  /entries:
+    summary: Diary entries
+    get:
+      tags:
+        - Entries
+      operationId: getEntries
+      summary: Retrieve Entries
+      responses:
+        200:
+          description: List all user entries
+          content:
+            application/json:
+              schema:
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Entry"
+    post:
+      tags:
+        - Entries
+      summary: Add an Entry
+      operationId: addEntry
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartialEntry"
+      responses:
+        201:
+          description: Entry successfully added
+  /entries/{id}:
+    summary: Diary entry
+    get:
+      tags:
+        - Entries
+      operationId: getEntry
+      summary: Retrieve Entry
+      responses:
+        200:
+          description: The entry
+          content:
+            application/json:
+              schema:
+                properties:
+                  entry:
+                    $ref: "#/components/schemas/Entry"
+    put:
+      tags:
+        - Entries
+      summary: Edit an Entry
+      operationId: editEntry
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartialEntry"
+      responses:
+        200:
+          description: Entry successfully edited
+    delete:
+      tags:
+        - Entries
+      summary: Delete an Entry
+      operationId: deleteEntry
+      responses:
+        200:
+          description: Entry successfully deleted
+
+security:
+  - Bearer Authentication: []
+servers:
+  - url: https://api.diary.yuruh.fr
+tags:
+  - name: Entries
+    description: Operations about diary entries

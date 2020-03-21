@@ -14,9 +14,11 @@ func main() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 
 	// Routes
 	e.GET("/", hello)
+	e.GET("/openapi.yml", sendApiSpec)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":8080"))
@@ -25,6 +27,10 @@ func main() {
 // Handler
 func hello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
+}
+
+func sendApiSpec(c echo.Context) error {
+	return c.File("openapi.yml")
 }
 
 func Dummy() int8 {
