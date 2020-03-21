@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/Yuruh/encrypted-diary/src"
-	"github.com/Yuruh/encrypted-diary/src/models"
+	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -47,6 +47,7 @@ func RunHttpServer()  {
 	app.GET("/openapi.yml", sendApiSpec)
 
 	app.GET("/entries", src.GetEntries)
+	app.POST("/entries", src.AddEntry)
 
 	// Start server
 	app.Logger.Fatal(app.Start(":8080"))
@@ -66,7 +67,7 @@ func (c TokenClaims) Valid() error {
 }
 
 type TokenClaims struct {
-	User models.User `json:"user"`
+	User database.User `json:"user"`
 	jwt.StandardClaims
 }
 
