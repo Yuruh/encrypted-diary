@@ -10,6 +10,7 @@ git:
   depth: 1
 
 
+#use newman for integration testing. to have coverage, it should be run by the go process, but then we could not differentiate unit and integration
 
 #envisionned steps:
   #unit tests
