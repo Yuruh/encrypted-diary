@@ -2,6 +2,7 @@ package src
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/labstack/echo/v4"
@@ -34,31 +35,35 @@ func EditEntry(context echo.Context) error {
 
 	err = json.Unmarshal([]byte(body), &partialEntry)
 	if err != nil {
-		println(err.Error())
 		return context.String(http.StatusBadRequest, "Could not read JSON body")
 	}
 	entry.PartialEntry = partialEntry
 
-	err = database.Update(entry)
+	err = database.Update(&entry)
 
 	if err != nil {
 		return context.String(http.StatusBadRequest, err.Error())
 	}
-	return context.NoContent(http.StatusCreated)
+	return context.JSON(http.StatusOK, map[string]interface{}{"entry": entry})
 }
 
 func AddEntry(context echo.Context) error {
 	body := helpers.ReadBody(context.Request().Body)
 
-	var entry database.Entry
+	var partialEntry database.PartialEntry
 
-	err := json.Unmarshal([]byte(body), &entry)
+	err := json.Unmarshal([]byte(body), &partialEntry)
 	if err != nil {
 		println(err.Error())
 		return context.String(http.StatusBadRequest, "Could not read JSON body")
 	}
 
-	err = database.Insert(entry)
+	var entry = database.Entry{
+		PartialEntry: partialEntry,
+	}
+
+	err = database.Insert(&entry)
+	fmt.Println(entry.Title)
 
 	if err != nil {
 //		if errors.Is(err, database.ValidationError{}) {
@@ -68,5 +73,5 @@ func AddEntry(context echo.Context) error {
 		println(err.Error())
 		return context.NoContent(http.StatusInternalServerError)
 	}
-	return context.NoContent(http.StatusCreated)
+	return context.JSON(http.StatusCreated, map[string]interface{}{"entry": entry})
 }

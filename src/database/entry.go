@@ -108,8 +108,7 @@ func (entry Entry) Validate() error {
 	return nil
 }
 
-func (entry Entry) Create() error {
-	println("creating entry", entry.ID)
+func (entry *Entry) Create() error {
 	db := GetDB().Create(&entry)
 	if db.Error != nil {
 		println(db.Error.Error())
@@ -118,7 +117,7 @@ func (entry Entry) Create() error {
 	return nil
 }
 
-func (entry Entry) Update() error {
+func (entry *Entry) Update() error {
 	err := entry.Validate()
 	if err != nil {
 		log.Fatalln(err.Error())
