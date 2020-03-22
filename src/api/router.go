@@ -48,6 +48,8 @@ func RunHttpServer()  {
 
 	app.GET("/entries", src.GetEntries)
 	app.POST("/entries", src.AddEntry)
+	app.PUT("/entries/:id", src.EditEntry)
+//	app.DELETE("/entries/:id", src.DeleteEntry)
 
 	// Start server
 	app.Logger.Fatal(app.Start(":8080"))

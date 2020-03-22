@@ -7,6 +7,8 @@ import (
 	"log"
 )
 
+// Validator tags resources: https://godoc.org/github.com/go-playground/validator#hdr-Length
+
 type User struct {
 	BaseModel
 	Email       string  `gorm:"type:varchar(100);unique_index" json:"email"`
@@ -98,7 +100,6 @@ func (entry Entry) Validate() error {
 
 			msg := "Validation failed on field: " + err.Field() + ". Expected: " + err.Tag() + " " + err.Param() + ". Got: " + err.Value().(string) + "."
 
-			fmt.Println(msg)
 			return fmt.Errorf(msg + "Validation failed: %w", errors.New(msg))
 		}
 
@@ -125,5 +126,4 @@ func (entry Entry) Update() error {
 	}
 	GetDB().Save(entry)
 	return nil
-
 }
