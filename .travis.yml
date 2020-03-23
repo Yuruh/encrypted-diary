@@ -22,7 +22,7 @@ git:
 script:
   - docker-compose -f docker-compose.test.yml build
   - docker-compose -f docker-compose.test.yml -p diary-tests up -d
-  - docker exec -it diary-tests_diary-api_1 go test ./src -race -coverprofile=coverage.txt -covermode=atomic
+  - docker exec -it diary-tests_diary-api_1 go test ./... -race -coverprofile=coverage.txt -covermode=atomic
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
