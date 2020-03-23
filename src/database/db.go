@@ -30,7 +30,7 @@ func GetDB() *gorm.DB {
 
 	if initialized == 0 {
 		instance = Connect()
-		instance.LogMode(true)
+		instance.LogMode(false)
 		instance.Set("gorm:auto_preload", true)
 
 		atomic.StoreUint32(&initialized, 1)

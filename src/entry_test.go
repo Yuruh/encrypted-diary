@@ -3,6 +3,7 @@ package src
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -53,9 +54,67 @@ var invalidEntry = database.Entry{
 
 const invalidJSON = "{"
 
-func TestEditEntry(t *testing.T) {
+func TestDeleteEntry(t *testing.T) {
+	t.Run("Ensure ok", testDeleteEntryOK)
+	t.Run("Ensure ko", testDeleteEntryKO)
+}
 
+func runDeleteEntry(id uint, t *testing.T) *httptest.ResponseRecorder {
+	e := echo.New()
+
+	/*
+		Very ugly fix caused by echo internal problems
+		A maintainer suggests this
+		https://github.com/labstack/echo/pull/1463#issuecomment-581107410
+	*/
+	r := e.Router()
+	r.Add("DELETE", "/entries/:id", func(ctx echo.Context) error {return nil})
+
+	request := httptest.NewRequest("DELETE", "/entries/" + strconv.Itoa(int(id)), nil)
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+	context.SetParamNames("id")
+	context.SetParamValues(strconv.Itoa(int(id)))
+
+	err := DeleteEntry(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return recorder
+}
+
+func testDeleteEntryOK(t *testing.T) {
+	entry := database.Entry{
+		PartialEntry: database.PartialEntry{
+			Content: "",
+			Title:   "The entry to remove title",
+		},
+	}
+	_ = database.Insert(&entry)
+	recorder := runDeleteEntry(entry.ID, t)
+	if recorder.Code != http.StatusOK {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
+	}
+
+	var resultEntry database.Entry
+	result := database.GetDB().Where("ID = ?", entry.ID).First(&resultEntry)
+	if result.RecordNotFound() == false {
+		t.Error("Record was not deleted from the database")
+	}
+}
+
+func testDeleteEntryKO(t *testing.T) {
+	recorder := runDeleteEntry(456545, t)
+	if recorder.Code != http.StatusNotFound {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusNotFound, recorder.Code)
+	}
+}
+
+func TestEditEntry(t *testing.T) {
 	t.Run("Valid arg", testEditValidEntry)
+	t.Run("Invalid Arg", testEditInvalidEntry)
 }
 
 func runEditEntry(id uint, arg []byte, t *testing.T) *httptest.ResponseRecorder {
@@ -73,7 +132,6 @@ func runEditEntry(id uint, arg []byte, t *testing.T) *httptest.ResponseRecorder 
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
-//	context.SetPath("/entries/:id")
 	context.SetParamNames("id")
 	context.SetParamValues(strconv.Itoa(int(id)))
 
@@ -83,6 +141,29 @@ func runEditEntry(id uint, arg []byte, t *testing.T) *httptest.ResponseRecorder 
 	}
 
 	return recorder
+}
+
+func testEditInvalidEntry(t *testing.T) {
+	entry := database.Entry{
+		PartialEntry: database.PartialEntry{
+			Content: "",
+			Title:   "The entry to edit title",
+		},
+	}
+	_ = database.Insert(&entry)
+	marshall, _ := json.Marshal(invalidEntry)
+	recorder := runEditEntry(entry.ID, marshall, t)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, recorder.Code)
+	}
+
+	var resultEntry database.Entry
+	database.GetDB().Where("ID = ?", entry.ID).First(&resultEntry)
+
+	if resultEntry.Title != "The entry to edit title" {
+		t.Errorf("Bad title, got %v, expected %v", resultEntry.Title, "The entry to edit title")
+	}
 }
 
 func testEditValidEntry(t *testing.T) {
@@ -109,7 +190,8 @@ func testEditValidEntry(t *testing.T) {
 	}
 
 	var resultEntry database.Entry
-	result := database.GetDB().First(&resultEntry).Where("ID = ?", response.Entry.ID)
+	fmt.Println(response.Entry.ID)
+	result := database.GetDB().Where("ID = ?", response.Entry.ID).First(&resultEntry)
 
 	if result.RecordNotFound() {
 		t.Error("Could not find created entry")

@@ -78,7 +78,6 @@ func (e *ValidationError) Unwrap() error {
 }
 
 func (entry Entry) Validate() error {
-	println("validating entry")
 	validate = validator.New()
 
 	err := validate.Struct(&entry)

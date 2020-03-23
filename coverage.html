@@ -54,7 +54,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/Yuruh/encrypted-diary/src/entry.go (88.2%)</option>
+				<option value="file0">github.com/Yuruh/encrypted-diary/src/entry.go (87.0%)</option>
 				
 				</select>
 			</div>
@@ -87,36 +87,6 @@ func GetEntries(c echo.Context) error <span class="cov8" title="1">{
         return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries})
 }</span>
 
-func EditEntry(context echo.Context) error <span class="cov8" title="1">{
-        id, err := strconv.Atoi(context.Param("id"))
-        if err != nil </span><span class="cov0" title="0">{
-                return context.String(http.StatusBadRequest, "Bad route parameter")
-        }</span>
-        <span class="cov8" title="1">var entry database.Entry
-        result := database.GetDB().First(&amp;entry).
-                Where("ID = ?", id)
-        if result.RecordNotFound() </span><span class="cov0" title="0">{
-                return context.String(http.StatusNotFound, "Entry not found")
-        }</span>
-
-        <span class="cov8" title="1">body := helpers.ReadBody(context.Request().Body)
-
-        var partialEntry database.PartialEntry
-
-        err = json.Unmarshal([]byte(body), &amp;partialEntry)
-        if err != nil </span><span class="cov0" title="0">{
-                return context.String(http.StatusBadRequest, "Could not read JSON body")
-        }</span>
-        <span class="cov8" title="1">entry.PartialEntry = partialEntry
-
-        err = database.Update(&amp;entry)
-
-        if err != nil </span><span class="cov0" title="0">{
-                return context.String(http.StatusBadRequest, err.Error())
-        }</span>
-        <span class="cov8" title="1">return context.JSON(http.StatusOK, map[string]interface{}{"entry": entry})</span>
-}
-
 func AddEntry(context echo.Context) error <span class="cov8" title="1">{
         body := helpers.ReadBody(context.Request().Body)
 
@@ -144,6 +114,57 @@ func AddEntry(context echo.Context) error <span class="cov8" title="1">{
                 return context.NoContent(http.StatusInternalServerError)
         }</span>
         <span class="cov8" title="1">return context.JSON(http.StatusCreated, map[string]interface{}{"entry": entry})</span>
+}
+
+func EditEntry(context echo.Context) error <span class="cov8" title="1">{
+        id, err := strconv.Atoi(context.Param("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return context.String(http.StatusBadRequest, "Bad route parameter")
+        }</span>
+        <span class="cov8" title="1">var entry database.Entry
+        result := database.GetDB().
+                Where("ID = ?", id).
+                First(&amp;entry)
+        if result.RecordNotFound() </span><span class="cov0" title="0">{
+                return context.String(http.StatusNotFound, "Entry not found")
+        }</span>
+
+        <span class="cov8" title="1">body := helpers.ReadBody(context.Request().Body)
+
+        var partialEntry database.PartialEntry
+
+        err = json.Unmarshal([]byte(body), &amp;partialEntry)
+        if err != nil </span><span class="cov0" title="0">{
+                return context.String(http.StatusBadRequest, "Could not read JSON body")
+        }</span>
+        <span class="cov8" title="1">entry.PartialEntry = partialEntry
+
+        err = database.Update(&amp;entry)
+
+        if err != nil </span><span class="cov8" title="1">{
+                return context.String(http.StatusBadRequest, err.Error())
+        }</span>
+        <span class="cov8" title="1">return context.JSON(http.StatusOK, map[string]interface{}{"entry": entry})</span>
+}
+
+func DeleteEntry(context echo.Context) error <span class="cov8" title="1">{
+        id, err := strconv.Atoi(context.Param("id"))
+        if err != nil </span><span class="cov0" title="0">{
+                return context.String(http.StatusBadRequest, "Bad route parameter")
+        }</span>
+        <span class="cov8" title="1">var entry database.Entry
+        result := database.GetDB().
+                Where("ID = ?", id).
+                First(&amp;entry)
+        if result.RecordNotFound() </span><span class="cov8" title="1">{
+                return context.String(http.StatusNotFound, "Entry not found")
+        }</span>
+        <span class="cov8" title="1">result = database.GetDB().Delete(&amp;entry)
+        if result.Error != nil </span><span class="cov0" title="0">{
+                fmt.Println(result.Error.Error())
+                return context.NoContent(http.StatusInternalServerError)
+        }</span>
+        <span class="cov8" title="1">return context.NoContent(http.StatusOK)</span>
 }</pre>
 		
 		</div>
