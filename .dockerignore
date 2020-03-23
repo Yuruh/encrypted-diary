@@ -1,0 +1,5 @@
+.env
+.git
+.idea
+.travis.yml
+.gitignore

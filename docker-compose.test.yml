@@ -1,0 +1,25 @@
+# This docker-compose file exists for development purposes. The one used in production can be found here:
+# https://github.com/Yuruh/Yuruh/blob/master/docker-compose.diary.yml
+
+version: "3.5"
+services:
+  diary-postgres:
+    image: "postgres:12.1"
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pwd
+  diary-api:
+    environment:
+      - DB_HOST=postgres
+      - DIARY_DB_USER=test_user
+      - DIARY_DB_PWD=test_pwd
+    build: "."
+    volumes:
+      - ./src:/usr/src/diary/src
+      - ${PWD}/coverage.html:/usr/src/diary/coverage.html
+
+        #for coverage report in coverall
+      - ${PWD}/coverage.txt:/usr/src/diary/coverage.txt
+    depends_on:
+      - diary-postgres
+

@@ -8,21 +8,20 @@ services:
     ports:
       - 5432:5432
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_USER: ${DIARY_DB_USER}
+      POSTGRES_PASSWORD: ${DIARY_DB_PWD}
     volumes:
-      - /data/postgresql:/var/lib/postgresql/data
+      - /data/postgresql/diary:/var/lib/postgresql/data
   pgadmin:
     image: dpage/pgadmin4
     environment:
-      PGADMIN_DEFAULT_EMAIL: antoine.lempereur@epitech.eu
-      PGADMIN_DEFAULT_PASSWORD: azerazer
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_USER}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PWD}
     ports:
       - 1500:80
     volumes:
       - pgadmin-data:/var/lib/pgadmin
   diary-api:
-    #network_mode: host
     environment:
       - DB_HOST=postgres
     build: "."
@@ -33,11 +32,13 @@ services:
       - 8080:8080
     depends_on:
       - diary-postgres
+    env_file:
+      - .env
   diary-doc:
     image: "redocly/redoc"
     environment:
       - PAGE_TITLE=API Doc - Encrypted Diary
-      #- PAGE_FAVICON=url
+      #- PAGE_FAVICON=<url>
       - REDOC_OPTIONS=hide-download-button
       - SPEC_URL=http://localhost:8080/openapi.yml
     ports:
