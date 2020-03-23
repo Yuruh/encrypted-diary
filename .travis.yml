@@ -3,14 +3,30 @@ language: go
 go:
   - 1.13.x
 
-env: GO111MODULE=on
+services:
+  - docker
 
+env:
+  - GO111MODULE=on
+  - DOCKER_COMPOSE_VERSION=1.4.2
+
+before_install:
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
 # Only clone the most recent commit.
 git:
   depth: 1
 
+script:
+  - docker-compose -f docker-compose.test.yml build
+  - docker-compose -f docker-compose.test.yml -p diary-tests up -d
+  - docker exec -it diary-tests_diary-api_1 go test -race -coverprofile=coverage.txt -covermode=atomic
+#  - go test -race -coverprofile=coverage.txt -covermode=atomic
 
-#use newman for integration testing. to have coverage, it should be run by the go process, but then we could not differentiate unit and integration
+after_success:
+  - docker exec -it diary-tests_diary-api_1 bash <(curl -s https://codecov.io/bash)
 
 #envisionned steps:
   #unit tests
