@@ -2,5 +2,4 @@
 .git
 .idea
 .travis.yml
-.coverage*
 
