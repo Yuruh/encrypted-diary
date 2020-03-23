@@ -1,0 +1,6 @@
+.env
+.git
+.idea
+.travis.yml
+.coverage*
+

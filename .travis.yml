@@ -23,10 +23,9 @@ script:
   - docker-compose -f docker-compose.test.yml build
   - docker-compose -f docker-compose.test.yml -p diary-tests up -d
   - docker exec -it diary-tests_diary-api_1 go test ./src -race -coverprofile=coverage.txt -covermode=atomic
-#  - go test -race -coverprofile=coverage.txt -covermode=atomic
 
 after_success:
-  - docker exec -it diary-tests_diary-api_1 bash <(curl -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash)
 
 #envisionned steps:
   #unit tests

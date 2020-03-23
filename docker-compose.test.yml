@@ -17,6 +17,9 @@ services:
     volumes:
       - ./src:/usr/src/diary/src
       - ${PWD}/coverage.html:/usr/src/diary/coverage.html
+
+        #for coverage report in coverall
+      - ${PWD}/coverage.txt:/usr/src/diary/coverage.txt
     depends_on:
       - diary-postgres
 
