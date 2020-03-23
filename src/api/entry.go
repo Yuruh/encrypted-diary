@@ -1,4 +1,4 @@
-package src
+package api
 
 import (
 	"encoding/json"
@@ -33,7 +33,6 @@ func AddEntry(context echo.Context) error {
 	}
 
 	err = database.Insert(&entry)
-	fmt.Println(entry.Title)
 
 	if err != nil {
 //		if errors.Is(err, database.ValidationError{}) {
