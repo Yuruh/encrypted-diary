@@ -184,3 +184,12 @@ func caseValidToken(t *testing.T) {
 		t.Errorf("Bad status, expected %v, got %v (%v)", http.StatusNotFound, httpErr.Code, httpErr)
 	}
 }
+
+func TestDeclareRoutes(t *testing.T) {
+	e := echo.New()
+	DeclareRoutes(e)
+
+	if len(e.Routes()) != 8 {
+		t.Errorf("Not enough routes difned, expected %v, got %v", 8, len(e.Routes()))
+	}
+}

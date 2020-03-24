@@ -17,14 +17,41 @@ type getEntriesResponse struct {
 	Entries []database.Entry `json:"entries"`
 }
 
+const UserHasAccessEmail = "user1@user.com"
+const UserNoAccessEmail = "user2@user.com"
+
+func SetupUsers() {
+	err := database.GetDB().Unscoped().Delete(database.User{})
+	if err.Error != nil {
+		fmt.Println(err.Error.Error())
+	}
+	var user1 = database.User{
+		BaseModel: database.BaseModel{},
+		Email:     UserHasAccessEmail,
+		Password:  "azer",
+	}
+	database.Insert(&user1)
+	var user2 = database.User{
+		BaseModel: database.BaseModel{},
+		Email:     UserNoAccessEmail,
+		Password:  "azer",
+	}
+	database.Insert(&user2)
+}
+
 func TestGetEntries(t *testing.T) {
 	database.GetDB().Unscoped().Delete(database.Entry{})
+	SetupUsers()
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	println(user.Email, user.ID)
 	for i := 0; i < 13; i++ {
 		entry := database.Entry{
 			PartialEntry: database.PartialEntry{
 				Content: strconv.Itoa(i),
 				Title:   "Entry " + strconv.Itoa(i),
 			},
+			UserID:user.ID,
 		}
 		_ = database.Insert(&entry)
 	}
@@ -45,6 +72,9 @@ func caseNoLimit(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err = GetEntries(context)
 	if err != nil {
@@ -80,6 +110,9 @@ func caseBadLimit(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err = GetEntries(context)
 	if err != nil {
@@ -102,6 +135,9 @@ func caseBadPage(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err = GetEntries(context)
 	if err != nil {
@@ -125,6 +161,9 @@ func caseLimitOk(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err = GetEntries(context)
 	if err != nil {
@@ -191,6 +230,10 @@ func runDeleteEntry(id uint, t *testing.T) *httptest.ResponseRecorder {
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
+
 	context.SetParamNames("id")
 	context.SetParamValues(strconv.Itoa(int(id)))
 
@@ -203,11 +246,15 @@ func runDeleteEntry(id uint, t *testing.T) *httptest.ResponseRecorder {
 }
 
 func testDeleteEntryOK(t *testing.T) {
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+
 	entry := database.Entry{
 		PartialEntry: database.PartialEntry{
 			Content: "",
 			Title:   "The entry to remove title",
 		},
+		UserID: user.ID,
 	}
 	_ = database.Insert(&entry)
 	recorder := runDeleteEntry(entry.ID, t)
@@ -251,6 +298,9 @@ func runEditEntry(id uint, arg []byte, t *testing.T) *httptest.ResponseRecorder 
 	context := e.NewContext(request, recorder)
 	context.SetParamNames("id")
 	context.SetParamValues(strconv.Itoa(int(id)))
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err := EditEntry(context)
 	if err != nil {
@@ -261,11 +311,15 @@ func runEditEntry(id uint, arg []byte, t *testing.T) *httptest.ResponseRecorder 
 }
 
 func testEditInvalidEntry(t *testing.T) {
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+
 	entry := database.Entry{
 		PartialEntry: database.PartialEntry{
 			Content: "",
 			Title:   "The entry to edit title",
 		},
+		UserID:user.ID,
 	}
 	_ = database.Insert(&entry)
 	marshall, _ := json.Marshal(invalidEntry)
@@ -284,12 +338,16 @@ func testEditInvalidEntry(t *testing.T) {
 }
 
 func testEditValidEntry(t *testing.T) {
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+
 	//should be in setup code
 	entry := database.Entry{
 		PartialEntry: database.PartialEntry{
 			Content: "",
 			Title:   "The entry to edit title",
 		},
+		UserID:user.ID,
 	}
 	_ = database.Insert(&entry)
 	marshall, _ := json.Marshal(validEntry)
@@ -330,6 +388,9 @@ func runAddEntry(arg []byte, t *testing.T) *httptest.ResponseRecorder {
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err := AddEntry(context)
 	if err != nil {

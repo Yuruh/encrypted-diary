@@ -21,6 +21,7 @@ type PartialEntry struct {
 type Entry struct {
 	BaseModel
 	PartialEntry
+	UserID uint
 }
 
 func (entry *Entry) Create() error {

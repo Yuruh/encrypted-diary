@@ -39,11 +39,7 @@ func RequireBody(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func RunHttpServer()  {
-	// Echo instance
-	app := echo.New()
-	app.HideBanner = true
-
+func DeclareRoutes(app *echo.Echo) {
 	// Middleware
 	app.Use(middleware.Logger())
 	app.Use(middleware.Recover())
@@ -65,7 +61,14 @@ func RunHttpServer()  {
 	app.POST("/entries", AddEntry, RequireBody)
 	app.PUT("/entries/:id", EditEntry, RequireBody)
 	app.DELETE("/entries/:id", DeleteEntry)
+}
 
+func RunHttpServer()  {
+	// Echo instance
+	app := echo.New()
+	app.HideBanner = true
+
+	DeclareRoutes(app)
 	// Start server
 	app.Logger.Fatal(app.Start(":8080"))
 }
