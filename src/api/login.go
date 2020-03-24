@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
 	"log"
@@ -15,7 +17,7 @@ import (
 
 // We use login body instead of user because user json blocks password
 type LoginBody struct {
-	Email string `json:"login"`
+	Email string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -78,15 +80,22 @@ func Register(context echo.Context) error {
 		Password:  string(hash),
 	}
 	err = database.Insert(&user)
+	if err, ok := err.(*pq.Error); ok {
+		fmt.Println("pq error:", err.Code)
 
+		// Are values defined somewhere ?
+		if err.Code == "23505" { //https://www.postgresql.org/docs/current/errcodes-appendix.html
+			return context.NoContent(http.StatusConflict)
+		} else {
+			fmt.Println("Unhandled pq error", err.Code, err.Code.Name())
+			return context.NoContent(http.StatusInternalServerError)
+		}
+	}
 
 	if err != nil {
 		//		if errors.Is(err, database.ValidationError{}) {
 		// not sure how to check which error it is from golang
 		return context.String(http.StatusBadRequest, err.Error())
-		//		}
-		println(err.Error())
-		return context.NoContent(http.StatusInternalServerError)
 	}
 	return context.JSON(http.StatusCreated, map[string]interface{}{"user": user})
 }
