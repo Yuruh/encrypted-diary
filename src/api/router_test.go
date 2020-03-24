@@ -11,6 +11,33 @@ import (
 	"time"
 )
 
+func TestSendApiSpec(t *testing.T) {
+	err := os.Chdir("../..")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	e := echo.New()
+	request, err := http.NewRequest("GET", "/openapi.yml", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+
+	err = SendApiSpec(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusOK {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
+	}
+	if len(recorder.Body.String()) < 400 {
+		t.Error("Spec content insufficient")
+	}
+}
+
 func TestAuthMiddleware(t *testing.T) {
 	t.Run("No token", caseNoToken)
 	t.Run("Bad token", caseBadToken)
@@ -18,24 +45,6 @@ func TestAuthMiddleware(t *testing.T) {
 	t.Run("Unprotected", caseUnprotectedRoute)
 	t.Run("Expired", caseExpiredToken)
 	t.Run("Valid", caseValidToken)
-	/*e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	//req.Header.Add("Authorization", "Bearer toto")
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	var auth = AuthMiddleware()(echo.NotFoundHandler)
-	err := auth(c)
-
-	if err.(*echo.HTTPError).Code != http.StatusBadRequest {
-		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, err.(*echo.HTTPError).Code)
-	}
-
-	c = e.NewContext(req, rec)
-	err = auth(c)
-	if err.(*echo.HTTPError).Code != http.StatusUnauthorized {
-		t.Errorf("Bad status, expected %v, got %v", http.StatusUnauthorized, err.(*echo.HTTPError).Code)
-	}*/
 }
 
 func caseNoToken(t *testing.T) {
