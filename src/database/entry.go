@@ -1,55 +1,14 @@
 package database
 
 import (
-	"errors"
 	"fmt"
 	"github.com/go-playground/validator/v10"
-	"log"
 )
-
-// Validator tags resources: https://godoc.org/github.com/go-playground/validator#hdr-Length
-
-type User struct {
-	BaseModel
-	Email       string  `gorm:"type:varchar(100);unique_index" json:"email"`
-	Password	string  `gorm:"not null" json:"-"`
-	//	ApiAccess	ApiAccess `gorm:"foreignKey:UserID" json:",omitempty"`
-}
-
-type Model interface {
-	Validate() error
-	Update() error
-	Create() error
-}
 
 var validate *validator.Validate
 
-func Insert(m Model) error {
-	err := m.Validate()
-	if err != nil {
-		return err
-	}
-	err = m.Create()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func Update(m Model) error {
-	err := m.Validate()
-	if err != nil {
-		return err
-	}
-	err = m.Update()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 /*
-	The User modifiable part of Entry
+	The user modifiable part of Entry
 */
 type PartialEntry struct {
 	Content		string `json:"content" gorm:"type:varchar"`
@@ -62,49 +21,7 @@ type PartialEntry struct {
 type Entry struct {
 	BaseModel
 	PartialEntry
-}
-
-type ValidationError struct {
-	msg string
-	err error
-}
-
-func (e *ValidationError) Error() string {
-	return e.msg
-}
-
-func (e *ValidationError) Unwrap() error {
-	return e.err
-}
-
-func (entry Entry) Validate() error {
-	validate = validator.New()
-
-	err := validate.Struct(&entry)
-	if err != nil {
-
-		for _, err := range err.(validator.ValidationErrors) {
-
-/*			fmt.Println(err.Namespace())
-			fmt.Println("field", err.Field())
-			fmt.Println(err.StructNamespace())
-			fmt.Println(err.StructField())
-			fmt.Println("tag", err.Tag())
-			fmt.Println(err.ActualTag())
-			fmt.Println("kind", err.Kind())
-			fmt.Println("type", err.Type())
-			fmt.Println("value", err.Value())
-			fmt.Println(err.Param())
-			fmt.Println()*/
-
-			msg := "Validation failed on field: " + err.Field() + ". Expected: " + err.Tag() + " " + err.Param() + ". Got: " + err.Value().(string) + "."
-
-			return fmt.Errorf(msg + "Validation failed: %w", errors.New(msg))
-		}
-
-		return err
-	}
-	return nil
+	UserID uint
 }
 
 func (entry *Entry) Create() error {
@@ -117,11 +34,40 @@ func (entry *Entry) Create() error {
 }
 
 func (entry *Entry) Update() error {
-	err := entry.Validate()
-	if err != nil {
-		log.Fatalln(err.Error())
-		return err
+	db := GetDB().Save(&entry)
+	if db.Error != nil {
+		println(db.Error.Error())
+		return db.Error
 	}
-	GetDB().Save(entry)
+
 	return nil
 }
+
+func (entry Entry) Validate() error {
+	validate = validator.New()
+
+	err := validate.Struct(&entry)
+	if err != nil {
+
+		errorMsg := BuildValidationErrorMsg(err.(validator.ValidationErrors))
+
+		//todo figure out how to send this message through the error
+		fmt.Println(errorMsg)
+
+		return err
+	}
+	return nil
+}
+
+/*type ValidationError struct {
+	msg string
+	err error
+}
+
+func (e *ValidationError) Error() string {
+	return e.msg
+}
+
+func (e *ValidationError) Unwrap() error {
+	return e.err
+}*/

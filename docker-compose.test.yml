@@ -13,6 +13,7 @@ services:
       - DB_HOST=postgres
       - DIARY_DB_USER=test_user
       - DIARY_DB_PWD=test_pwd
+      - ACCESS_TOKEN_SECRET=gfvbjhgyfgvhbnj
     build: "."
     volumes:
       - ./src:/usr/src/diary/src

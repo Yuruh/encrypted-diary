@@ -1,4 +1,4 @@
-package src
+package api
 
 import (
 	"encoding/json"
@@ -12,12 +12,43 @@ import (
 
 // Handler
 func GetEntries(c echo.Context) error {
+	var user database.User = c.Get("user").(database.User)
+
+	var limit = 10
+	var offset = 0
+	var err error
+
+	if c.QueryParam("limit") != "" {
+		limit, err = strconv.Atoi(c.QueryParam("limit"))
+		if err != nil {
+			return c.String(http.StatusBadRequest, "Bad query param 'limit', expected number")
+		}
+	}
+
+	if c.QueryParam("page") != "" {
+		page, err := strconv.Atoi(c.QueryParam("limit"))
+		if err != nil {
+			return c.String(http.StatusBadRequest, "Bad query param 'page', expected number")
+		}
+		if page >= 2 {
+			offset = limit * (page - 2)
+		}
+	}
+
 	var entries []database.Entry
-	database.GetDB().Find(&entries)
+	database.GetDB().
+		Where("user_id = ?", user.ID).
+		Select("id, title, updated_at, created_at").
+		Order("updated_at desc").
+		Limit(limit).
+		Offset(offset).
+		Find(&entries)
 	return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries})
 }
 
 func AddEntry(context echo.Context) error {
+	var user database.User = context.Get("user").(database.User)
+
 	body := helpers.ReadBody(context.Request().Body)
 
 	var partialEntry database.PartialEntry
@@ -30,14 +61,14 @@ func AddEntry(context echo.Context) error {
 
 	var entry = database.Entry{
 		PartialEntry: partialEntry,
+		UserID:user.ID,
 	}
 
 	err = database.Insert(&entry)
-	fmt.Println(entry.Title)
 
 	if err != nil {
 //		if errors.Is(err, database.ValidationError{}) {
-		// not sure how to check which error it is from golang
+		// not sure how to check which error it is in golang
 		return context.String(http.StatusBadRequest, err.Error())
 //		}
 		println(err.Error())
@@ -47,6 +78,8 @@ func AddEntry(context echo.Context) error {
 }
 
 func EditEntry(context echo.Context) error {
+	var user database.User = context.Get("user").(database.User)
+
 	id, err := strconv.Atoi(context.Param("id"))
 	if err != nil {
 		return context.String(http.StatusBadRequest, "Bad route parameter")
@@ -54,6 +87,7 @@ func EditEntry(context echo.Context) error {
 	var entry database.Entry
 	result := database.GetDB().
 		Where("ID = ?", id).
+		Where("user_id = ?", user.ID).
 		First(&entry)
 	if result.RecordNotFound() {
 		return context.String(http.StatusNotFound, "Entry not found")
@@ -78,6 +112,8 @@ func EditEntry(context echo.Context) error {
 }
 
 func DeleteEntry(context echo.Context) error {
+	var user database.User = context.Get("user").(database.User)
+
 	id, err := strconv.Atoi(context.Param("id"))
 	if err != nil {
 		return context.String(http.StatusBadRequest, "Bad route parameter")
@@ -85,6 +121,7 @@ func DeleteEntry(context echo.Context) error {
 	var entry database.Entry
 	result := database.GetDB().
 		Where("ID = ?", id).
+		Where("user_id = ?", user.ID).
 		First(&entry)
 	if result.RecordNotFound() {
 		return context.String(http.StatusNotFound, "Entry not found")

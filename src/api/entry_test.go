@@ -1,4 +1,4 @@
-package src
+package api
 
 import (
 	"bytes"
@@ -8,11 +8,61 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"testing"
 )
 
+type getEntriesResponse struct {
+	Entries []database.Entry `json:"entries"`
+}
+
+const UserHasAccessEmail = "user1@user.com"
+const UserNoAccessEmail = "user2@user.com"
+
+func SetupUsers() {
+	err := database.GetDB().Unscoped().Delete(database.User{})
+	if err.Error != nil {
+		fmt.Println(err.Error.Error())
+	}
+	var user1 = database.User{
+		BaseModel: database.BaseModel{},
+		Email:     UserHasAccessEmail,
+		Password:  "azer",
+	}
+	database.Insert(&user1)
+	var user2 = database.User{
+		BaseModel: database.BaseModel{},
+		Email:     UserNoAccessEmail,
+		Password:  "azer",
+	}
+	database.Insert(&user2)
+}
+
 func TestGetEntries(t *testing.T) {
+	database.GetDB().Unscoped().Delete(database.Entry{})
+	SetupUsers()
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	println(user.Email, user.ID)
+	for i := 0; i < 13; i++ {
+		entry := database.Entry{
+			PartialEntry: database.PartialEntry{
+				Content: strconv.Itoa(i),
+				Title:   "Entry " + strconv.Itoa(i),
+			},
+			UserID:user.ID,
+		}
+		_ = database.Insert(&entry)
+	}
+
+	t.Run("No limit", caseNoLimit)
+	t.Run("Bad limit", caseBadLimit)
+	t.Run("Bad page", caseBadPage)
+	t.Run("Limit Ok", caseLimitOk)
+}
+
+func caseNoLimit(t *testing.T) {
 	e := echo.New()
 	request, err := http.NewRequest("GET", "/entries", nil)
 	if err != nil {
@@ -22,6 +72,9 @@ func TestGetEntries(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err = GetEntries(context)
 	if err != nil {
@@ -29,6 +82,109 @@ func TestGetEntries(t *testing.T) {
 	}
 	if recorder.Code != http.StatusOK {
 		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
+	}
+
+	var response getEntriesResponse
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	if err != nil {
+		t.Error("Could not read response")
+	}
+
+	if len(response.Entries) != 10 {
+		t.Errorf("Bad number of entries, expected %v, got %v", 10, len(response.Entries))
+	}
+	if response.Entries[3].Content != "" {
+		t.Errorf("Expected empty content, got %v", response.Entries[0].Content)
+	}
+}
+
+func caseBadLimit(t *testing.T) {
+	e := echo.New()
+	q:= make(url.Values)
+	q.Set("limit", "@&é")
+	request, err := http.NewRequest("GET", "/entries?" + q.Encode(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
+
+	err = GetEntries(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, recorder.Code)
+	}
+}
+
+func caseBadPage(t *testing.T) {
+	e := echo.New()
+	q:= make(url.Values)
+	q.Set("page", "@&é")
+	request, err := http.NewRequest("GET", "/entries?" + q.Encode(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
+
+	err = GetEntries(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, recorder.Code)
+	}
+}
+
+func caseLimitOk(t *testing.T) {
+	e := echo.New()
+	q:= make(url.Values)
+	q.Set("page", "2")
+	q.Set("limit", "3")
+	request, err := http.NewRequest("GET", "/entries?" + q.Encode(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
+
+	err = GetEntries(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusOK {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
+	}
+
+	var response getEntriesResponse
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	if err != nil {
+		t.Error("Could not read response")
+	}
+
+	if len(response.Entries) != 3 {
+		t.Errorf("Bad number of entries, expected %v, got %v", 10, len(response.Entries))
+	}
+
+	if response.Entries[2].Title != "Entry 7" {
+		t.Errorf("Bad Entry title, expected %v, got %v", "Entry 5", response.Entries[2].Title)
 	}
 }
 
@@ -74,6 +230,10 @@ func runDeleteEntry(id uint, t *testing.T) *httptest.ResponseRecorder {
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
+
 	context.SetParamNames("id")
 	context.SetParamValues(strconv.Itoa(int(id)))
 
@@ -86,11 +246,15 @@ func runDeleteEntry(id uint, t *testing.T) *httptest.ResponseRecorder {
 }
 
 func testDeleteEntryOK(t *testing.T) {
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+
 	entry := database.Entry{
 		PartialEntry: database.PartialEntry{
 			Content: "",
 			Title:   "The entry to remove title",
 		},
+		UserID: user.ID,
 	}
 	_ = database.Insert(&entry)
 	recorder := runDeleteEntry(entry.ID, t)
@@ -134,6 +298,9 @@ func runEditEntry(id uint, arg []byte, t *testing.T) *httptest.ResponseRecorder 
 	context := e.NewContext(request, recorder)
 	context.SetParamNames("id")
 	context.SetParamValues(strconv.Itoa(int(id)))
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err := EditEntry(context)
 	if err != nil {
@@ -144,11 +311,15 @@ func runEditEntry(id uint, arg []byte, t *testing.T) *httptest.ResponseRecorder 
 }
 
 func testEditInvalidEntry(t *testing.T) {
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+
 	entry := database.Entry{
 		PartialEntry: database.PartialEntry{
 			Content: "",
 			Title:   "The entry to edit title",
 		},
+		UserID:user.ID,
 	}
 	_ = database.Insert(&entry)
 	marshall, _ := json.Marshal(invalidEntry)
@@ -167,12 +338,16 @@ func testEditInvalidEntry(t *testing.T) {
 }
 
 func testEditValidEntry(t *testing.T) {
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+
 	//should be in setup code
 	entry := database.Entry{
 		PartialEntry: database.PartialEntry{
 			Content: "",
 			Title:   "The entry to edit title",
 		},
+		UserID:user.ID,
 	}
 	_ = database.Insert(&entry)
 	marshall, _ := json.Marshal(validEntry)
@@ -213,6 +388,9 @@ func runAddEntry(arg []byte, t *testing.T) *httptest.ResponseRecorder {
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	context.Set("user", user)
 
 	err := AddEntry(context)
 	if err != nil {
