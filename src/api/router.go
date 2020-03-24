@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/dgrijalva/jwt-go"
@@ -9,8 +8,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"net/http"
 	"os"
-	"path/filepath"
-	"runtime"
 )
 
 func AuthMiddleware() echo.MiddlewareFunc {
@@ -79,13 +76,6 @@ func hello(c echo.Context) error {
 }
 
 func SendApiSpec(c echo.Context) error {
-	ex, _ := os.Executable()
-	fmt.Println(filepath.Dir(ex))
-	fmt.Println(os.Getwd())
-	path, _ := filepath.Abs("./openapi.yml")
-	fmt.Println(path)
-	_, filename, _, _ := runtime.Caller(0)
-	fmt.Println(filename)
 	return c.File("openapi.yml")
 }
 

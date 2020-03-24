@@ -8,11 +8,34 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"testing"
 )
 
+type getEntriesResponse struct {
+	Entries []database.Entry `json:"entries"`
+}
+
 func TestGetEntries(t *testing.T) {
+	database.GetDB().Unscoped().Delete(database.Entry{})
+	for i := 0; i < 13; i++ {
+		entry := database.Entry{
+			PartialEntry: database.PartialEntry{
+				Content: strconv.Itoa(i),
+				Title:   "Entry " + strconv.Itoa(i),
+			},
+		}
+		_ = database.Insert(&entry)
+	}
+
+	t.Run("No limit", caseNoLimit)
+	t.Run("Bad limit", caseBadLimit)
+	t.Run("Bad page", caseBadPage)
+	t.Run("Limit Ok", caseLimitOk)
+}
+
+func caseNoLimit(t *testing.T) {
 	e := echo.New()
 	request, err := http.NewRequest("GET", "/entries", nil)
 	if err != nil {
@@ -29,6 +52,100 @@ func TestGetEntries(t *testing.T) {
 	}
 	if recorder.Code != http.StatusOK {
 		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
+	}
+
+	var response getEntriesResponse
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	if err != nil {
+		t.Error("Could not read response")
+	}
+
+	if len(response.Entries) != 10 {
+		t.Errorf("Bad number of entries, expected %v, got %v", 10, len(response.Entries))
+	}
+	if response.Entries[3].Content != "" {
+		t.Errorf("Expected empty content, got %v", response.Entries[0].Content)
+	}
+}
+
+func caseBadLimit(t *testing.T) {
+	e := echo.New()
+	q:= make(url.Values)
+	q.Set("limit", "@&é")
+	request, err := http.NewRequest("GET", "/entries?" + q.Encode(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+
+	err = GetEntries(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, recorder.Code)
+	}
+}
+
+func caseBadPage(t *testing.T) {
+	e := echo.New()
+	q:= make(url.Values)
+	q.Set("page", "@&é")
+	request, err := http.NewRequest("GET", "/entries?" + q.Encode(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+
+	err = GetEntries(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, recorder.Code)
+	}
+}
+
+func caseLimitOk(t *testing.T) {
+	e := echo.New()
+	q:= make(url.Values)
+	q.Set("page", "2")
+	q.Set("limit", "3")
+	request, err := http.NewRequest("GET", "/entries?" + q.Encode(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+
+	err = GetEntries(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusOK {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
+	}
+
+	var response getEntriesResponse
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	if err != nil {
+		t.Error("Could not read response")
+	}
+
+	if len(response.Entries) != 3 {
+		t.Errorf("Bad number of entries, expected %v, got %v", 10, len(response.Entries))
+	}
+
+	if response.Entries[2].Title != "Entry 7" {
+		t.Errorf("Bad Entry title, expected %v, got %v", "Entry 5", response.Entries[2].Title)
 	}
 }
 

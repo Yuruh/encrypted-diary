@@ -12,8 +12,35 @@ import (
 
 // Handler
 func GetEntries(c echo.Context) error {
+	var limit = 10
+	var offset = 0
+	var err error
+
+	if c.QueryParam("limit") != "" {
+		limit, err = strconv.Atoi(c.QueryParam("limit"))
+		if err != nil {
+			return c.String(http.StatusBadRequest, "Bad query param 'limit', expected number")
+		}
+	}
+
+	if c.QueryParam("page") != "" {
+		page, err := strconv.Atoi(c.QueryParam("limit"))
+		if err != nil {
+			return c.String(http.StatusBadRequest, "Bad query param 'page', expected number")
+		}
+		if page >= 2 {
+			offset = limit * (page - 2)
+		}
+	}
+
+	fmt.Println(offset, limit)
 	var entries []database.Entry
-	database.GetDB().Find(&entries)
+	database.GetDB().
+		Select("id, title, updated_at, created_at").
+		Order("updated_at desc").
+		Limit(limit).
+		Offset(offset).
+		Find(&entries)
 	return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries})
 }
 
