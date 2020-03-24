@@ -2,6 +2,12 @@ components:
   parameters: {}
   responses: {}
   schemas:
+    User:
+      type: object
+      properties:
+        email:
+          type: string
+          format: "email"
     PartialEntry:
       type: object
       properties:
@@ -74,6 +80,39 @@ info:
     url: https://us.123rf.com/450wm/bessyana/bessyana1911/bessyana191100018/137324124-black-and-white-locked-diary-girl-secret-journal-fairy-tale-theme-vector-illustration-for-icon-stamp.jpg?ver=6
 openapi: 3.0.0
 paths:
+  /register:
+    summary: Create account
+    post:
+      security: []
+      tags:
+        - Account
+      operationId: register
+      summary: Create account
+      description: No authorization required
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                email:
+                  type: string
+                  format: "email"
+                password:
+                  type: string
+      responses:
+        201:
+          description: Account created
+          content:
+            application/json:
+              schema:
+                properties:
+                  user:
+                    type: object
+                    $ref: "#/components/schemas/User"
+        400:
+          description: Bad request
+        409:
+          description: User already exists
   /entries:
     summary: Diary entries
     get:

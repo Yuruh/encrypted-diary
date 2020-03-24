@@ -8,19 +8,12 @@
 Building a diary solution where every entry is encrypted using the user's password.
 It should be hosted on my servers, where multiple users could register, and offer the ability to self host, using a docker image and / or clear instructions
 
-# Roadmap
+# Encryption process
 
-## API
+To create encryption key : PBKDF2 hashing of user password
 
-- DevOps setup (GoLang / Docker / CI / CD / Hosting)
-- OpenAPI Spec Definition
-- Write acceptance tests 
-- Golang Implem
+To encrypt / decrypt journal entries: AES-256
 
-## Web Application
+**All encryption must be done client side**
 
-TBD
- 
-## Smartphone application
-
-TBD
+Only 2 routes should require password: login, and change-password (which has to rewrite all user journal entries)
