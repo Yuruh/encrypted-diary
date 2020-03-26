@@ -40,7 +40,11 @@ func BuildValidationErrorMsg(errs validator.ValidationErrors) string {
 	msg := ""
 
 	for _, err := range errs {
-		msg += "Validation failed on field: " + err.Field() + ". Expected: " + err.Tag() + " " + err.Param() + ". Got: " + err.Value().(string) + ".\n"
+		msg += "Validation failed on field: '" + err.Field() + "'. Expected to respect rule: '" + err.Tag()
+		if err.Param() != "" {
+			msg += " " + err.Param()
+		}
+		msg += "'. Got value: '" + err.Value().(string) + "'.\n"
 	}
 	return msg
 }

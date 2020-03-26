@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
@@ -66,14 +67,15 @@ func AddEntry(context echo.Context) error {
 
 	err = database.Insert(&entry)
 
+
+	if err, ok := err.(validator.ValidationErrors); ok {
+		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
+	}
 	if err != nil {
-//		if errors.Is(err, database.ValidationError{}) {
-		// not sure how to check which error it is in golang
-		return context.String(http.StatusBadRequest, err.Error())
-//		}
-		println(err.Error())
+		fmt.Println(err.Error())
 		return context.NoContent(http.StatusInternalServerError)
 	}
+
 	return context.JSON(http.StatusCreated, map[string]interface{}{"entry": entry})
 }
 
@@ -104,10 +106,14 @@ func EditEntry(context echo.Context) error {
 	entry.PartialEntry = partialEntry
 
 	err = database.Update(&entry)
-
-	if err != nil {
-		return context.String(http.StatusBadRequest, err.Error())
+	if err, ok := err.(validator.ValidationErrors); ok {
+		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
+	if err != nil {
+		fmt.Println(err.Error())
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
 	return context.JSON(http.StatusOK, map[string]interface{}{"entry": entry})
 }
 

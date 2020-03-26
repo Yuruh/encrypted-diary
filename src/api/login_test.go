@@ -110,7 +110,8 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 	t.Run("User already exists", caseUserAlreadyExists)
-	t.Run("Bad format", caseBadFormat)
+	t.Run("Bad email format", caseBadEmailFormat)
+	t.Run("Bad pwd format", caseBadPasswordFormat)
 	t.Run("User created", caseUserCreated)
 	db := database.GetDB().Delete(&user)
 	if db.Error != nil {
@@ -122,7 +123,7 @@ func caseUserAlreadyExists(t *testing.T) {
 	e := echo.New()
 	user := LoginBody{
 		Email:     "does@exists.fr",
-		Password:  "azertyuiop",
+		Password:  "Aze@ty1iop",
 	}
 	marshalled, _ := json.Marshal(user)
 	request, err := http.NewRequest("POST", "/register", bytes.NewReader(marshalled))
@@ -143,10 +144,35 @@ func caseUserAlreadyExists(t *testing.T) {
 	}
 }
 
-func caseBadFormat(t *testing.T) {
+func caseBadEmailFormat(t *testing.T) {
 	e := echo.New()
 	user := LoginBody{
 		Email:     "badmail",
+		Password:  "Aze@ty1iop",
+	}
+	marshalled, _ := json.Marshal(user)
+	request, err := http.NewRequest("POST", "/register", bytes.NewReader(marshalled))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+
+	err = Register(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("Bad status, expected %v, got %v (%v)", http.StatusBadRequest, recorder.Code, recorder.Body.String())
+	}
+}
+
+func caseBadPasswordFormat(t *testing.T) {
+	e := echo.New()
+	user := LoginBody{
+		Email:     "test@exists.fr",
 		Password:  "azertyuiop",
 	}
 	marshalled, _ := json.Marshal(user)
@@ -172,7 +198,7 @@ func caseUserCreated(t *testing.T) {
 	e := echo.New()
 	user := LoginBody{
 		Email:     "doesnt@exists.fr",
-		Password:  "azertyuiop",
+		Password:  "Aze@ty1iop",
 	}
 	marshalled, _ := json.Marshal(user)
 	request, err := http.NewRequest("POST", "/register", bytes.NewReader(marshalled))

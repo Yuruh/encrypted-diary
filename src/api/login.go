@@ -13,14 +13,19 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"unicode"
 )
 
 // We use login body instead of user because user json blocks password
 type LoginBody struct {
 	Email string `json:"email"`
-	Password string `json:"password"`
+	Password string `json:"password" validate:"min=9"`
 }
+/*
+"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
 
+Can be used client side to validate password
+ */
 func Login(context echo.Context) error {
 	body, err := ioutil.ReadAll(context.Request().Body)
 	if err != nil {
@@ -56,17 +61,40 @@ func Login(context echo.Context) error {
 	}
 }
 
+func verifyPassword(s string) bool {
+	var number, upper, special bool
+	for _, c := range s {
+		switch {
+		case unicode.IsNumber(c):
+			number = true
+		case unicode.IsUpper(c):
+			upper = true
+		case unicode.IsPunct(c) || unicode.IsSymbol(c):
+			special = true
+		case unicode.IsLetter(c) || c == ' ':
+		default:
+			//return false, false, false
+		}
+	}
+	return len(s) >= 8 && number && upper && special
+}
+
 func Register(context echo.Context) error {
 	body, err := ioutil.ReadAll(context.Request().Body)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 
-	var parsedBody database.User
+	var parsedBody LoginBody
 
 	err = json.Unmarshal(body, &parsedBody)
 	if err != nil {
 		return context.NoContent(http.StatusBadRequest)
+	}
+
+	if !verifyPassword(parsedBody.Password) {
+		return context.String(http.StatusBadRequest, "Bad password. Requirements: Minimum eight characters, at least one uppercase letter, " +
+			"one lowercase letter, one number and one special character")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(parsedBody.Password), bcrypt.DefaultCost)

@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -46,17 +45,16 @@ func (entry *Entry) Update() error {
 func (entry Entry) Validate() error {
 	validate = validator.New()
 
-	err := validate.Struct(&entry)
-	if err != nil {
+	return validate.Struct(&entry)
+/*	if err != nil {
 
 		errorMsg := BuildValidationErrorMsg(err.(validator.ValidationErrors))
 
-		//todo figure out how to send this message through the error
 		fmt.Println(errorMsg)
 
 		return err
 	}
-	return nil
+	return nil*/
 }
 
 /*type ValidationError struct {

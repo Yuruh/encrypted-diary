@@ -437,6 +437,11 @@ func testAddInvalidEntry(t *testing.T) {
 	if recorder.Code != http.StatusBadRequest {
 		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, recorder.Code)
 	}
+
+	str := "Validation failed on field: 'Title'. Expected to respect rule: 'min 3'. Got value: 'T'.\n"
+	if recorder.Body.String() != str {
+		t.Errorf("Bad status, expected (%v), got (%v)", str, recorder.Body.String())
+	}
 }
 
 func testAddInvalidJson(t *testing.T) {
