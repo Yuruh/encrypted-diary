@@ -189,7 +189,7 @@ func TestDeclareRoutes(t *testing.T) {
 	e := echo.New()
 	DeclareRoutes(e)
 
-	if len(e.Routes()) != 8 {
-		t.Errorf("Not enough routes difned, expected %v, got %v", 8, len(e.Routes()))
+	if len(e.Routes()) != 9 {
+		t.Errorf("Not enough routes defined, expected %v, got %v", 9, len(e.Routes()))
 	}
 }

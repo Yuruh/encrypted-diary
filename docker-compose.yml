@@ -39,7 +39,6 @@ services:
     environment:
       - PAGE_TITLE=API Doc - Encrypted Diary
       #- PAGE_FAVICON=<url>
-      - REDOC_OPTIONS=hide-download-button
       - SPEC_URL=http://localhost:8080/openapi.yml
     ports:
       - "8082:80"

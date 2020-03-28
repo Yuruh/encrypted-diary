@@ -45,8 +45,8 @@ func DeclareRoutes(app *echo.Echo) {
 	app.Use(middleware.Recover())
 	app.Use(middleware.CORS())
 
-	app.POST("/Login", Login, RequireBody)
-	app.POST("/Register", Register, RequireBody)
+	app.POST("/login", Login, RequireBody)
+	app.POST("/register", Register, RequireBody)
 
 
 	// According to https://echo.labstack.com/middleware, "Middleware registered using Echo#Use() is only executed for paths which are registered after Echo#Use() has been called."
@@ -58,6 +58,8 @@ func DeclareRoutes(app *echo.Echo) {
 	app.GET("/openapi.yml", SendApiSpec)
 
 	app.GET("/entries", GetEntries)
+	app.GET("/entries/:id", GetEntry)
+
 	app.POST("/entries", AddEntry, RequireBody)
 	app.PUT("/entries/:id", EditEntry, RequireBody)
 	app.DELETE("/entries/:id", DeleteEntry)

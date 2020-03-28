@@ -74,12 +74,44 @@ components:
 info:
   description: API Description
   title: Encrypted Diary API Specification
-  version: 0.0.0
+  version: 0.2.0
   x-logo:
     altText: Logo
     url: https://us.123rf.com/450wm/bessyana/bessyana1911/bessyana191100018/137324124-black-and-white-locked-diary-girl-secret-journal-fairy-tale-theme-vector-illustration-for-icon-stamp.jpg?ver=6
 openapi: 3.0.0
 paths:
+  /login:
+    summary: Log in
+    post:
+      security: []
+      tags:
+        - Account
+      operationId: login
+      summary: Log in
+      description: Exchange user / pwd for an access token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                email:
+                  type: string
+                  format: "email"
+                password:
+                  type: string
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                properties:
+                  token:
+                    type: string
+        400:
+          description: Bad parameters
+        404:
+          description: User not found
   /register:
     summary: Create account
     post:
@@ -88,7 +120,7 @@ paths:
         - Account
       operationId: register
       summary: Create account
-      description: No authorization required
+      description: "Password requirements: Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character"
       requestBody:
         content:
           application/json:

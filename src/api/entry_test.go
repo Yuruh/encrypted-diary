@@ -17,6 +17,11 @@ type getEntriesResponse struct {
 	Entries []database.Entry `json:"entries"`
 }
 
+type getEntryResponse struct {
+	Entry database.Entry `json:"entry"`
+}
+
+
 const UserHasAccessEmail = "user1@user.com"
 const UserNoAccessEmail = "user2@user.com"
 
@@ -39,12 +44,67 @@ func SetupUsers() {
 	database.Insert(&user2)
 }
 
+func TestGetEntry(t *testing.T) {
+	SetupUsers()
+	var user database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+
+	//should be in setup code
+	entry := database.Entry{
+		PartialEntry: database.PartialEntry{
+			Content: "",
+			Title:   "An awesome tile",
+		},
+		UserID:user.ID,
+	}
+	_ = database.Insert(&entry)
+
+	e := echo.New()
+
+	/*
+		Very ugly fix caused by echo internal problems
+		A maintainer suggests this
+		https://github.com/labstack/echo/pull/1463#issuecomment-581107410
+	*/
+	r := e.Router()
+	r.Add("DELETE", "/entries/:id", func(ctx echo.Context) error {return nil})
+	request, err := http.NewRequest("GET", "/entries/" + strconv.Itoa(int(entry.ID)), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	recorder := httptest.NewRecorder()
+	context := e.NewContext(request, recorder)
+	context.Set("user", user)
+
+	context.SetParamNames("id")
+	context.SetParamValues(strconv.Itoa(int(entry.ID)))
+
+	err = GetEntry(context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusOK {
+		t.Errorf("Bad status, expected %v, got %v (%v)", http.StatusOK, recorder.Code, recorder.Body.String())
+	}
+
+	var response getEntryResponse
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	if err != nil {
+		t.Error("Could not read response")
+	}
+
+	if response.Entry.Title != "An awesome tile" {
+		t.Errorf("Expected %v, got %v", "An awesome tile", response.Entry.Title)
+	}
+}
+
 func TestGetEntries(t *testing.T) {
 	database.GetDB().Unscoped().Delete(database.Entry{})
 	SetupUsers()
 	var user database.User
 	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
-	println(user.Email, user.ID)
 	for i := 0; i < 13; i++ {
 		entry := database.Entry{
 			PartialEntry: database.PartialEntry{

@@ -47,6 +47,24 @@ func GetEntries(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries})
 }
 
+func GetEntry(context echo.Context) error {
+	var user database.User = context.Get("user").(database.User)
+
+	id, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		return context.String(http.StatusBadRequest, "Bad route parameter")
+	}
+	var entry database.Entry
+	result := database.GetDB().
+		Where("ID = ?", id).
+		Where("user_id = ?", user.ID).
+		First(&entry)
+	if result.RecordNotFound() {
+		return context.String(http.StatusNotFound, "Entry not found")
+	}
+	return context.JSON(http.StatusOK, map[string]interface{}{"entry": entry})
+}
+
 func AddEntry(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
