@@ -62,7 +62,31 @@ func GetEntry(context echo.Context) error {
 	if result.RecordNotFound() {
 		return context.String(http.StatusNotFound, "Entry not found")
 	}
-	return context.JSON(http.StatusOK, map[string]interface{}{"entry": entry})
+	var ret map[string]interface{} = map[string]interface{}{"entry": entry}
+	var nextEntry database.Entry
+	result = database.GetDB().
+		Where("user_id = ?", user.ID).
+		Order("created_at asc").
+		Where("created_at > ?", entry.CreatedAt).
+		First(&nextEntry)
+	if !result.RecordNotFound() {
+		fmt.Println(nextEntry.Title)
+		ret["next_entry_id"] = nextEntry.ID
+	}
+	var prevEntry database.Entry
+	result = database.GetDB().
+		Where("user_id = ?", user.ID).
+		Order("created_at desc").
+		Where("created_at < ?", entry.CreatedAt).
+		First(&prevEntry)
+	if !result.RecordNotFound() {
+		fmt.Println(nextEntry.Title)
+		ret["prev_entry_id"] = prevEntry.ID
+	}
+
+	// todo refacto, and / or as an exercise, build this as a single data base request;
+
+	return context.JSON(http.StatusOK, ret)
 }
 
 func AddEntry(context echo.Context) error {
