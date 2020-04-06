@@ -55,6 +55,7 @@ func Connect() *gorm.DB {
 func RunMigration() {
 	instance.AutoMigrate(&User{})
 	instance.AutoMigrate(&Entry{})
+	instance.AutoMigrate(&Label{})
 
 	//	instance.Create(&models.User{Email: "toto@address.com"})
 	//	db.Create(&models.User{Email: "tzata@tata.com", Password:"azer"})

@@ -70,7 +70,6 @@ func GetEntry(context echo.Context) error {
 		Where("created_at > ?", entry.CreatedAt).
 		First(&nextEntry)
 	if !result.RecordNotFound() {
-		fmt.Println(nextEntry.Title)
 		ret["next_entry_id"] = nextEntry.ID
 	}
 	var prevEntry database.Entry
@@ -80,13 +79,17 @@ func GetEntry(context echo.Context) error {
 		Where("created_at < ?", entry.CreatedAt).
 		First(&prevEntry)
 	if !result.RecordNotFound() {
-		fmt.Println(nextEntry.Title)
 		ret["prev_entry_id"] = prevEntry.ID
 	}
 
-	// todo refacto, and / or as an exercise, build this as a single data base request;
+	// todo refacto, or as an exercise, build this as a single data base request;
 
 	return context.JSON(http.StatusOK, ret)
+}
+
+type AddEntryRequestBody struct {
+	database.PartialEntry
+	LabelsID []int `json:"labels_id"`
 }
 
 func AddEntry(context echo.Context) error {
@@ -94,17 +97,28 @@ func AddEntry(context echo.Context) error {
 
 	body := helpers.ReadBody(context.Request().Body)
 
-	var partialEntry database.PartialEntry
+	var requestBody AddEntryRequestBody
 
-	err := json.Unmarshal([]byte(body), &partialEntry)
+	err := json.Unmarshal([]byte(body), &requestBody)
 	if err != nil {
-		println(err.Error())
 		return context.String(http.StatusBadRequest, "Could not read JSON body")
 	}
 
+	// request to find all users label in labels_id
+	var labels []database.Label
+
+	response := database.GetDB().
+		Where("user_id = ?", user.ID).
+		Where("id IN (?)", requestBody.LabelsID).
+		Find(&labels)
+	if response.Error != nil {
+		fmt.Println(response.Error.Error())
+	}
+
 	var entry = database.Entry{
-		PartialEntry: partialEntry,
+		PartialEntry: requestBody.PartialEntry,
 		UserID:user.ID,
+		Labels: labels,
 	}
 
 	err = database.Insert(&entry)

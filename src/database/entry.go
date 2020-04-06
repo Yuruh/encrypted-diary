@@ -21,6 +21,7 @@ type Entry struct {
 	BaseModel
 	PartialEntry
 	UserID uint
+	Labels		[]Label `json:"labels" gorm:"many2many:entry_labels;"`
 }
 
 func (entry *Entry) Create() error {
@@ -46,26 +47,4 @@ func (entry Entry) Validate() error {
 	validate = validator.New()
 
 	return validate.Struct(&entry)
-/*	if err != nil {
-
-		errorMsg := BuildValidationErrorMsg(err.(validator.ValidationErrors))
-
-		fmt.Println(errorMsg)
-
-		return err
-	}
-	return nil*/
 }
-
-/*type ValidationError struct {
-	msg string
-	err error
-}
-
-func (e *ValidationError) Error() string {
-	return e.msg
-}
-
-func (e *ValidationError) Unwrap() error {
-	return e.err
-}*/

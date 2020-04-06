@@ -24,26 +24,23 @@ script:
   - docker-compose -f docker-compose.test.yml -p diary-tests up -d
   - docker exec -it diary-tests_diary-api_1 go test ./... -race -coverprofile=coverage.txt -covermode=atomic
 
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
-
-#envisionned steps:
-  #unit tests
-  #docker image build
-  #integration tests (should probably run using a specific docker-compose)
-
-  #stop here if it is not a merge to staging or master
-
-  #git tagging based of major / minor / fix (in PR name ?)
-  #image tagging based of git tag
-  #push to docker image to registry
-
-#env:
-#TRAVIS_BRANCH:
-  #
-  #    for push builds, or builds not triggered by a pull request, this is the name of the branch.
-  #    for builds triggered by a pull request this is the name of the branch targeted by the pull request.
-  #    for builds triggered by a tag, this is the same as the name of the tag (TRAVIS_TAG).
-
-#TRAVIS_COMMIT_MESSAGE: The commit subject and body, unwrapped.
-#TRAVIS_PULL_REQUEST: The pull request number if the current job is a pull request, “false” if it’s not a pull request.
+jobs:
+  include:
+    - stage: test
+      script:
+        - docker-compose -f docker-compose.test.yml build
+        - docker-compose -f docker-compose.test.yml -p diary-tests up -d
+        - docker exec -it diary-tests_diary-api_1 go test ./... -race -coverprofile=coverage.txt -covermode=atomic
+      after_success:
+        - bash <(curl -s https://codecov.io/bash)
+    - stage: deploy
+      script:
+        - echo "TO DO"
+#        - sudo apt install gawk
+#        - export NEXT_TAG=$(./get_next_tag.sh $TRAVIS_PULL_REQUEST_BRANCH $(git describe --abbrev=0))
+#        - echo "Next version = $NEXT_TAG"
+#        - docker build -t yuruh/encrypted-diary-web-app:$NEXT_TAG .
+#        - docker login -u yuruh -p $DOCKER_PWD
+#        - git tag -a $NEXT_TAG -m "$TRAVIS_COMMIT_MESSAGE"
+#        - git push "https://$GITHUB_TOKEN@github.com/Yuruh/encrypted-diary-web-app.git --tags
+#        - docker push yuruh/encrypted-diary-web-app:$NEXT_TAG

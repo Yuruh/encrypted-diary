@@ -21,6 +21,11 @@ components:
         content:
           type: string
           description: "Diary Entry content. Encrypted. Markdown format."
+        labels_id:
+          type: array
+          items:
+            type: integer
+            format: int64
     Entry:
       type: object
       properties:
@@ -40,15 +45,13 @@ components:
         title:
           type: string
           maxLength: 500
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Label"
         content:
           type: string
           description: "Diary Entry content. Encrypted. Markdown format."
-# We'll see later on how we add tags
-#        labels:
-#          type: array
-#          items:
-#            $ref: "#/components/schemas/Label"
-#          default: []
     Label:
       type: object
       properties:

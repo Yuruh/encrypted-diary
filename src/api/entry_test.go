@@ -21,29 +21,6 @@ type getEntryResponse struct {
 	Entry database.Entry `json:"entry"`
 }
 
-
-const UserHasAccessEmail = "user1@user.com"
-const UserNoAccessEmail = "user2@user.com"
-
-func SetupUsers() {
-	err := database.GetDB().Unscoped().Delete(database.User{})
-	if err.Error != nil {
-		fmt.Println(err.Error.Error())
-	}
-	var user1 = database.User{
-		BaseModel: database.BaseModel{},
-		Email:     UserHasAccessEmail,
-		Password:  "azer",
-	}
-	database.Insert(&user1)
-	var user2 = database.User{
-		BaseModel: database.BaseModel{},
-		Email:     UserNoAccessEmail,
-		Password:  "azer",
-	}
-	database.Insert(&user2)
-}
-
 func TestGetEntry(t *testing.T) {
 	SetupUsers()
 	var user database.User
@@ -440,6 +417,8 @@ func TestAddEntry(t *testing.T) {
 	t.Run("Valid arg", testAddValidEntry)
 	t.Run("Invalid arg", testAddInvalidEntry)
 	t.Run("Invalid json", testAddInvalidJson)
+
+	t.Run("Associate existing labels", testAssociateLabels)
 }
 
 func runAddEntry(arg []byte, t *testing.T) *httptest.ResponseRecorder {
@@ -509,5 +488,31 @@ func testAddInvalidJson(t *testing.T) {
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, recorder.Code)
+	}
+}
+
+func testAssociateLabels(t *testing.T) {
+	marshall, _ := json.Marshal(validEntry)
+	recorder := runAddEntry(marshall, t)
+
+	if recorder.Code != http.StatusCreated {
+		t.Errorf("Bad status, expected %v, got %v", http.StatusCreated, recorder.Code)
+	}
+
+	var response response
+
+	err := json.Unmarshal(recorder.Body.Bytes(), &response)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var entries []database.Entry
+	result := database.GetDB().First(&entries).Where("ID = ?", response.Entry.ID)
+
+	if result.RecordNotFound() {
+		t.Error("Could not find created entry")
+	}
+	if response.Entry.Title != "The title" {
+		t.Errorf("Bad title, got %v, expected %v", response.Entry.Title, "The title")
 	}
 }
