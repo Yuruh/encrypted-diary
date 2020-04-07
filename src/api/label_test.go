@@ -63,7 +63,7 @@ func TestGetLabels(t *testing.T) {
 
 
 	context, recorder := BuildEchoContext([]byte(""))
-	context.QueryParams().Set("name", "pat")
+	context.QueryParams().Set("name", "p")
 
 	err := GetLabels(context)
 	assert.Equal(http.StatusOK, recorder.Code)

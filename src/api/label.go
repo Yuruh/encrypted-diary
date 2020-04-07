@@ -52,7 +52,9 @@ func GetLabels(context echo.Context) error {
 		Where("user_id = ?", user.ID).
 		Limit(limit).
 		Offset(offset).
-		Order(gorm.Expr("levenshtein(?, SUBSTRING(name, 1, LENGTH(?))) ASC", name, name)).
+		// We use levenshtein https://www.postgresql.org/docs/9.1/fuzzystrmatch.html
+		// Note: It seems to be case influenced, so we work on lowercase
+		Order(gorm.Expr("levenshtein(LOWER(?), SUBSTRING(Lower(name), 1, LENGTH(?))) ASC", name, name)).
 		Find(&labels)
 
 // select * from labels where levenshtein('waok', name) <= 3;
