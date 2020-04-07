@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/labstack/echo/v4"
+	asserthelper "github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -414,6 +415,9 @@ func testEditValidEntry(t *testing.T) {
 }
 
 func TestAddEntry(t *testing.T) {
+	SetupUsers()
+
+
 	t.Run("Valid arg", testAddValidEntry)
 	t.Run("Invalid arg", testAddInvalidEntry)
 	t.Run("Invalid json", testAddInvalidJson)
@@ -492,12 +496,49 @@ func testAddInvalidJson(t *testing.T) {
 }
 
 func testAssociateLabels(t *testing.T) {
-	marshall, _ := json.Marshal(validEntry)
+	assert := asserthelper.New(t)
+
+	var user1 database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user1)
+	var user2 database.User
+	database.GetDB().Where("email = ?", UserNoAccessEmail).First(&user2)
+
+	labelWorkUsr1 := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "Work",
+			Color: "#123456",
+		},
+		UserID:       user1.ID,
+	}
+	labelFamilyUsr1 := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "Family",
+			Color: "#654321",
+		},
+		UserID:       user1.ID,
+	}
+	labelFamilyUsr2 := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "Family",
+			Color: "#AABBCC",
+		},
+		UserID:       user2.ID,
+	}
+	database.GetDB().Create(&labelWorkUsr1)
+
+	database.GetDB().Create(&labelFamilyUsr1)
+
+	database.GetDB().Create(&labelFamilyUsr2)
+
+	marshall, _ := json.Marshal(AddEntryRequestBody{
+		PartialEntry: database.PartialEntry{
+			Title: "Entry with labels",
+		},
+		LabelsID:     []uint{labelWorkUsr1.ID, labelFamilyUsr2.ID, labelFamilyUsr1.ID},
+	})
 	recorder := runAddEntry(marshall, t)
 
-	if recorder.Code != http.StatusCreated {
-		t.Errorf("Bad status, expected %v, got %v", http.StatusCreated, recorder.Code)
-	}
+	assert.Equal(http.StatusCreated, recorder.Code, recorder.Body.String())
 
 	var response response
 
@@ -509,10 +550,11 @@ func testAssociateLabels(t *testing.T) {
 	var entries []database.Entry
 	result := database.GetDB().First(&entries).Where("ID = ?", response.Entry.ID)
 
-	if result.RecordNotFound() {
-		t.Error("Could not find created entry")
-	}
-	if response.Entry.Title != "The title" {
-		t.Errorf("Bad title, got %v, expected %v", response.Entry.Title, "The title")
-	}
+	assert.Equal(false, result.RecordNotFound())
+	assert.Equal("Entry with labels", response.Entry.Title)
+
+	assert.NotNil(response.Entry.Labels)
+	assert.Equal(2, len(response.Entry.Labels))
+	assert.Equal("#654321", response.Entry.Labels[1].Color)
+
 }

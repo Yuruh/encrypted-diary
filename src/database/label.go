@@ -12,6 +12,7 @@ type Label struct {
 	BaseModel
 	PartialLabel
 	UserID uint
+//	Entries		[]Entry `json:"entries" gorm:"many2many:entry_labels;"`
 }
 
 func (label *Label) Create() error {

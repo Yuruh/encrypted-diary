@@ -89,19 +89,37 @@ func GetEntry(context echo.Context) error {
 
 type AddEntryRequestBody struct {
 	database.PartialEntry
-	LabelsID []int `json:"labels_id"`
+	LabelsID []uint `json:"labels_id"`
 }
 
 func AddEntry(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
+	entry, errorString := buildEntryFromRequestBody(context, user)
+	if errorString != "" {
+		return context.String(http.StatusBadRequest, errorString)
+	}
+	err := database.Insert(&entry)
+
+	if err, ok := err.(validator.ValidationErrors); ok {
+		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
+	}
+	if err != nil {
+		fmt.Println(err.Error())
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	return context.JSON(http.StatusCreated, map[string]interface{}{"entry": entry})
+}
+
+func buildEntryFromRequestBody(context echo.Context, user database.User) (database.Entry, string) {
 	body := helpers.ReadBody(context.Request().Body)
 
 	var requestBody AddEntryRequestBody
 
 	err := json.Unmarshal([]byte(body), &requestBody)
 	if err != nil {
-		return context.String(http.StatusBadRequest, "Could not read JSON body")
+		return database.Entry{}, "Could not read JSON body"
 	}
 
 	// request to find all users label in labels_id
@@ -115,24 +133,11 @@ func AddEntry(context echo.Context) error {
 		fmt.Println(response.Error.Error())
 	}
 
-	var entry = database.Entry{
+	return database.Entry{
 		PartialEntry: requestBody.PartialEntry,
 		UserID:user.ID,
 		Labels: labels,
-	}
-
-	err = database.Insert(&entry)
-
-
-	if err, ok := err.(validator.ValidationErrors); ok {
-		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
-	}
-	if err != nil {
-		fmt.Println(err.Error())
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	return context.JSON(http.StatusCreated, map[string]interface{}{"entry": entry})
+	}, ""
 }
 
 func EditEntry(context echo.Context) error {
@@ -151,17 +156,13 @@ func EditEntry(context echo.Context) error {
 		return context.String(http.StatusNotFound, "Entry not found")
 	}
 
-	body := helpers.ReadBody(context.Request().Body)
-
-	var partialEntry database.PartialEntry
-
-	err = json.Unmarshal([]byte(body), &partialEntry)
-	if err != nil {
-		return context.String(http.StatusBadRequest, "Could not read JSON body")
+	builtEntry, errorString := buildEntryFromRequestBody(context, user)
+	if errorString != "" {
+		return context.String(http.StatusBadRequest, errorString)
 	}
-	entry.PartialEntry = partialEntry
+	builtEntry.ID = entry.ID
 
-	err = database.Update(&entry)
+	err = database.Update(&builtEntry)
 	if err, ok := err.(validator.ValidationErrors); ok {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
