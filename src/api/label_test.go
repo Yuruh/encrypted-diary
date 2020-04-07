@@ -53,7 +53,17 @@ func TestGetLabels(t *testing.T) {
 		})
 	}
 
+	database.GetDB().Create(&database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "Patate",
+			Color: "#FF00AA",
+		},
+		UserID:       user1.ID,
+	})
+
+
 	context, recorder := BuildEchoContext([]byte(""))
+	context.QueryParams().Set("name", "pat")
 
 	err := GetLabels(context)
 	assert.Equal(http.StatusOK, recorder.Code)
@@ -61,9 +71,8 @@ func TestGetLabels(t *testing.T) {
 	var response getLabelsResponse
 	assert.Nil(err)
 
-
 	err = json.Unmarshal(recorder.Body.Bytes(), &response)
 	assert.Nil(err)
 	assert.Equal(5, len(response.Labels))
-	assert.Equal("Label 4", response.Labels[4].Name)
+	assert.Equal("Patate", response.Labels[0].Name)
 }

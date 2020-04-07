@@ -6,6 +6,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/go-playground/validator/v10"
+	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
@@ -42,12 +43,26 @@ func GetLabels(context echo.Context) error {
 		return context.String(http.StatusBadRequest, "Bad query parameters")
 	}
 
+	// Should it be sanitized ?
+	name := context.QueryParam("name")
+
+	fmt.Println("azerazer", name)
 	var labels []database.Label
 	database.GetDB().
 		Where("user_id = ?", user.ID).
 		Limit(limit).
 		Offset(offset).
+		Order(gorm.Expr("levenshtein(?, SUBSTRING(name, 1, LENGTH(?))) ASC", name, name)).
 		Find(&labels)
+
+// select * from labels where levenshtein('waok', name) <= 3;
+// select * from labels ORDER BY levenshtein('FAMILY', name) ASC;
+// Works great but very dependent of the name of the function
+
+//	select * from labels ORDER BY levenshtein('womk', SUBSTRING(name, 1, LENGTH('FAMI'))) ASC;
+
+
+
 	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})
 }
 

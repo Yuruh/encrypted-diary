@@ -58,6 +58,8 @@ func Connect() *gorm.DB {
 	https://github.com/jinzhu/gorm/issues/450#issuecomment-487958084
  */
 func RunMigration() {
+	instance.Exec("CREATE EXTENSION fuzzystrmatch")
+
 	instance.AutoMigrate(&User{})
 	instance.AutoMigrate(&Entry{})
 	instance.AutoMigrate(&Label{})
