@@ -187,6 +187,8 @@ func caseBadPage(t *testing.T) {
 }
 
 func caseLimitOk(t *testing.T) {
+	assert := asserthelper.New(t)
+
 	e := echo.New()
 	q:= make(url.Values)
 	q.Set("page", "2")
@@ -207,23 +209,16 @@ func caseLimitOk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recorder.Code != http.StatusOK {
-		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
-	}
+	assert.Equal(http.StatusOK, recorder.Code)
 
 	var response getEntriesResponse
 	err = json.Unmarshal(recorder.Body.Bytes(), &response)
 	if err != nil {
 		t.Error("Could not read response")
 	}
+	assert.Equal(3, len(response.Entries))
 
-	if len(response.Entries) != 3 {
-		t.Errorf("Bad number of entries, expected %v, got %v", 10, len(response.Entries))
-	}
-
-	if response.Entries[2].Title != "Entry 7" {
-		t.Errorf("Bad Entry title, expected %v, got %v", "Entry 5", response.Entries[2].Title)
-	}
+	assert.Equal("Entry 7", response.Entries[2].Title)
 }
 
 var validEntry = database.Entry{

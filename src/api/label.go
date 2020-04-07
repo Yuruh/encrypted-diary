@@ -8,7 +8,48 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"strconv"
 )
+
+func GetPaginationParams(defaultLimit int, context echo.Context) (limit int, offset int, err error) {
+	limit = defaultLimit
+	offset = 0
+
+	if context.QueryParam("limit") != "" {
+		limit, err = strconv.Atoi(context.QueryParam("limit"))
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+
+	if context.QueryParam("page") != "" {
+		page, err := strconv.Atoi(context.QueryParam("page"))
+		if err != nil {
+			return 0, 0, err
+		}
+		if page >= 1 {
+			offset = limit * (page - 1)
+		}
+	}
+	return limit, offset, nil
+}
+
+func GetLabels(context echo.Context) error {
+	var user database.User = context.Get("user").(database.User)
+
+	limit, offset, err := GetPaginationParams(5, context)
+	if err != nil {
+		return context.String(http.StatusBadRequest, "Bad query parameters")
+	}
+
+	var labels []database.Label
+	database.GetDB().
+		Where("user_id = ?", user.ID).
+		Limit(limit).
+		Offset(offset).
+		Find(&labels)
+	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})
+}
 
 // almost the exact same code as add entry, could be refactored but not sure how without generic
 // maybe with reflect, https://stackoverflow.com/questions/51097211/how-to-pass-type-to-function-argument

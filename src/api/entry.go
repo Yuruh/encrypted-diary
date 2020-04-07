@@ -15,25 +15,10 @@ import (
 func GetEntries(c echo.Context) error {
 	var user database.User = c.Get("user").(database.User)
 
-	var limit = 10
-	var offset = 0
-	var err error
+	limit, offset, err := GetPaginationParams(10, c)
 
-	if c.QueryParam("limit") != "" {
-		limit, err = strconv.Atoi(c.QueryParam("limit"))
-		if err != nil {
-			return c.String(http.StatusBadRequest, "Bad query param 'limit', expected number")
-		}
-	}
-
-	if c.QueryParam("page") != "" {
-		page, err := strconv.Atoi(c.QueryParam("limit"))
-		if err != nil {
-			return c.String(http.StatusBadRequest, "Bad query param 'page', expected number")
-		}
-		if page >= 2 {
-			offset = limit * (page - 2)
-		}
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Bad query parameters")
 	}
 
 	var entries []database.Entry

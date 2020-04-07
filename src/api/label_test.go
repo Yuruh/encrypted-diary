@@ -5,6 +5,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	asserthelper "github.com/stretchr/testify/assert"
 	"net/http"
+	"strconv"
 	"testing"
 )
 
@@ -33,4 +34,36 @@ func TestAddLabel(t *testing.T) {
 	assert.Equal("Work", response.Label.Name)
 	assert.Equal("#ff00aa", response.Label.Color)
 	assert.Equal(user1.ID, response.Label.UserID)
+}
+type getLabelsResponse struct {
+	Labels []database.Label `json:"labels"`
+}
+
+func TestGetLabels(t *testing.T) {
+	user1, _ := SetupUsers()
+	assert := asserthelper.New(t)
+
+	for i := 0; i < 8; i++ {
+		database.GetDB().Create(&database.Label{
+			PartialLabel: database.PartialLabel{
+				Name: "Label " + strconv.Itoa(i),
+				Color: "#FF00AA",
+			},
+			UserID:       user1.ID,
+		})
+	}
+
+	context, recorder := BuildEchoContext([]byte(""))
+
+	err := GetLabels(context)
+	assert.Equal(http.StatusOK, recorder.Code)
+
+	var response getLabelsResponse
+	assert.Nil(err)
+
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+	assert.Equal(5, len(response.Labels))
+	assert.Equal("Label 4", response.Labels[4].Name)
 }
