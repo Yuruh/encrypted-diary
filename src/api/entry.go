@@ -23,6 +23,7 @@ func GetEntries(c echo.Context) error {
 
 	var entries []database.Entry
 	database.GetDB().
+		Preload("Labels").
 		Where("user_id = ?", user.ID).
 		Select("id, title, updated_at, created_at").
 		Order("updated_at desc").
@@ -41,6 +42,7 @@ func GetEntry(context echo.Context) error {
 	}
 	var entry database.Entry
 	result := database.GetDB().
+		Preload("Labels").
 		Where("ID = ?", id).
 		Where("user_id = ?", user.ID).
 		First(&entry)

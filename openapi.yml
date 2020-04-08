@@ -23,6 +23,7 @@ components:
           description: "Diary Entry content. Encrypted. Markdown format."
         labels_id:
           type: array
+          description: The IDs of labels associated to this entry. Unrecognized IDs will be ignored
           items:
             type: integer
             format: int64
@@ -191,6 +192,12 @@ paths:
       responses:
         201:
           description: Entry successfully added
+          content:
+            application/json:
+              schema:
+                properties:
+                  entry:
+                    $ref: "#/components/schemas/Entry"
   /entries/{id}:
     summary: Diary entry
     get:
@@ -228,6 +235,12 @@ paths:
       responses:
         200:
           description: Entry successfully deleted
+          content:
+            application/json:
+              schema:
+                properties:
+                  entry:
+                    $ref: "#/components/schemas/Entry"
   /labels:
     get:
       tags:
@@ -284,7 +297,35 @@ paths:
           description: Bad request
         409:
           description: Name already exists
-
+  /labels/{id}:
+    summary: User label
+    put:
+      tags:
+        - Labels
+      summary: Edit a label
+      operationId: editLabel
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartialLabel"
+      responses:
+        200:
+          description: Label successfully edited
+          content:
+            application/json:
+              schema:
+                properties:
+                  label:
+                    $ref: "#/components/schemas/Label"
+    delete:
+      tags:
+        - Labels
+      summary: Delete a Label
+      operationId: deleteLabel
+      responses:
+        200:
+          description: Label successfully deleted
 security:
   - Bearer Authentication: []
 servers:

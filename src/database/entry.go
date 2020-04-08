@@ -33,6 +33,7 @@ func (entry *Entry) Create() error {
 	return nil
 }
 
+// todo find a way to preload labels here
 func (entry *Entry) Update() error {
 	db := GetDB().Save(&entry)
 	if db.Error != nil {

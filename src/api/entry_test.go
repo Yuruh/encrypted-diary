@@ -83,6 +83,14 @@ func TestGetEntries(t *testing.T) {
 	SetupUsers()
 	var user database.User
 	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	var label database.Label = database.Label{
+		PartialLabel: database.PartialLabel{
+			Name:  "Work",
+			Color: "#FF0000",
+		},
+		UserID:       user.ID,
+	}
+	database.GetDB().Create(&label)
 	for i := 0; i < 13; i++ {
 		entry := database.Entry{
 			PartialEntry: database.PartialEntry{
@@ -90,6 +98,7 @@ func TestGetEntries(t *testing.T) {
 				Title:   "Entry " + strconv.Itoa(i),
 			},
 			UserID:user.ID,
+			Labels: []database.Label{label},
 		}
 		_ = database.Insert(&entry)
 	}
@@ -101,38 +110,25 @@ func TestGetEntries(t *testing.T) {
 }
 
 func caseNoLimit(t *testing.T) {
-	e := echo.New()
-	request, err := http.NewRequest("GET", "/entries", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	assert := asserthelper.New(t)
 
-	recorder := httptest.NewRecorder()
-	context := e.NewContext(request, recorder)
-	var user database.User
-	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
-	context.Set("user", user)
+	context, recorder := BuildEchoContext([]byte(""))
 
-	err = GetEntries(context)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if recorder.Code != http.StatusOK {
-		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
-	}
+	err := GetEntries(context)
+	assert.Nil(err)
+
+	assert.Equal(http.StatusOK, recorder.Code)
 
 	var response getEntriesResponse
 	err = json.Unmarshal(recorder.Body.Bytes(), &response)
-	if err != nil {
-		t.Error("Could not read response")
-	}
+	assert.Nil(err)
+	assert.Equal(10, len(response.Entries))
 
-	if len(response.Entries) != 10 {
-		t.Errorf("Bad number of entries, expected %v, got %v", 10, len(response.Entries))
-	}
-	if response.Entries[3].Content != "" {
-		t.Errorf("Expected empty content, got %v", response.Entries[0].Content)
+	// By design we don't fill content
+	assert.Equal("", response.Entries[3].Content)
+
+	if assert.NotNil(response.Entries[0].Labels) {
+		assert.Equal("Work", response.Entries[0].Labels[0].Name)
 	}
 }
 
