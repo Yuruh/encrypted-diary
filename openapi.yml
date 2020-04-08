@@ -52,18 +52,30 @@ components:
         content:
           type: string
           description: "Diary Entry content. Encrypted. Markdown format."
+    PartialLabel:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          format: alphanumeric
+          description: Unique per user
+        color:
+          type: string
+          format: hexcolor
     Label:
       type: object
       properties:
         id:
           type: integer
           format: int64
-        value:
+        name:
           type: string
           maxLength: 100
+          format: alphanumeric
         color:
           type: string
-          format: hex
+          format: hexcolor
 
   securitySchemes:
     Bearer Authentication:
@@ -216,6 +228,62 @@ paths:
       responses:
         200:
           description: Entry successfully deleted
+  /labels:
+    get:
+      tags:
+        - Labels
+      operationId: getLabels
+      summary: Retrieve user labels
+      responses:
+        200:
+          description: User labels
+          content:
+            application/json:
+              schema:
+                properties:
+                  labels:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Label"
+      parameters:
+        - name: name
+          in: query
+          description: Label name for auto-completion
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Number of items per page. Default to 5
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: Current page. Starts at 1
+          schema:
+            type: integer
+    post:
+      tags:
+        - Labels
+      operationId: addLabel
+      summary: Add a user label
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartialLabel"
+      responses:
+        201:
+          description: Label created
+          content:
+            application/json:
+              schema:
+                properties:
+                  label:
+                    $ref: "#/components/schemas/Label"
+        400:
+          description: Bad request
+        409:
+          description: Name already exists
 
 security:
   - Bearer Authentication: []
@@ -224,3 +292,5 @@ servers:
 tags:
   - name: Entries
     description: Operations about diary entries
+  - name: Labels
+    description: Manipulate labels to easily find entries

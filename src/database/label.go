@@ -4,7 +4,7 @@ import "github.com/go-playground/validator/v10"
 
 // The user modifiable part
 type PartialLabel struct {
-	Name string `json:"name"`
+	Name string `json:"name" validate:"alphanum;max=100"`
 	Color string `json:"color" validate:"hexcolor"`
 }
 

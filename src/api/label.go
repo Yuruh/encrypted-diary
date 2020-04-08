@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func GetPaginationParams(defaultLimit int, context echo.Context) (limit int, offset int, err error) {
@@ -46,7 +47,6 @@ func GetLabels(context echo.Context) error {
 	// Should it be sanitized ?
 	name := context.QueryParam("name")
 
-	fmt.Println("azerazer", name)
 	var labels []database.Label
 	database.GetDB().
 		Where("user_id = ?", user.ID).
@@ -57,20 +57,14 @@ func GetLabels(context echo.Context) error {
 		Order(gorm.Expr("levenshtein(LOWER(?), SUBSTRING(Lower(name), 1, LENGTH(?))) ASC", name, name)).
 		Find(&labels)
 
-// select * from labels where levenshtein('waok', name) <= 3;
-// select * from labels ORDER BY levenshtein('FAMILY', name) ASC;
-// Works great but very dependent of the name of the function
-
-//	select * from labels ORDER BY levenshtein('womk', SUBSTRING(name, 1, LENGTH('FAMI'))) ASC;
-
-
-
 	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})
 }
 
 // almost the exact same code as add entry, could be refactored but not sure how without generic
 // maybe with reflect, https://stackoverflow.com/questions/51097211/how-to-pass-type-to-function-argument
 // I feel reflect is a terrible idea, maybe this can be interfaced
+
+// May not be as similar in the end, still the method is too big imo
 func AddLabel(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
@@ -86,6 +80,15 @@ func AddLabel(context echo.Context) error {
 	var label = database.Label{
 		PartialLabel: partialLabel,
 		UserID:       user.ID,
+	}
+
+	var existingLabel database.Label
+	result := database.GetDB().
+		Where("user_id = ?", user.ID).
+		Where("LOWER(name) = ?", strings.ToLower(label.Name)).
+		Find(&existingLabel)
+	if !result.RecordNotFound() {
+		return context.String(http.StatusConflict, "Label with name " + label.Name + " already exists")
 	}
 
 	err = database.Insert(&label)

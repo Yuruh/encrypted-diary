@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	asserthelper "github.com/stretchr/testify/assert"
 	"net/http"
@@ -22,6 +23,7 @@ func TestAddLabel(t *testing.T) {
 	})
 	context, recorder := BuildEchoContext(marshall)
 
+	fmt.Println("add label 1")
 	err := AddLabel(context)
 
 	assert.Nil(err)
@@ -35,6 +37,43 @@ func TestAddLabel(t *testing.T) {
 	assert.Equal("#ff00aa", response.Label.Color)
 	assert.Equal(user1.ID, response.Label.UserID)
 }
+
+func TestAddLabelAlreadyExists(t *testing.T) {
+	assert := asserthelper.New(t)
+
+	user1, _ := SetupUsers()
+	database.GetDB().Create(&database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "work",
+			Color: "#FF00AA",
+		},
+		UserID:       user1.ID,
+	})
+	marshall, _ := json.Marshal(database.PartialLabel{
+		Name:  "Work",
+		Color: "#ff00aa",
+	})
+	context, recorder := BuildEchoContext(marshall)
+
+	err := AddLabel(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusConflict, recorder.Code)
+}
+
+func TestAddLabelBadFormat(t *testing.T) {
+	assert := asserthelper.New(t)
+
+	marshall, _ := json.Marshal(database.PartialLabel{
+		Name:  "Wor&k",
+		Color: "#ff00aa",
+	})
+	context, recorder := BuildEchoContext(marshall)
+
+	err := AddLabel(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusBadRequest, recorder.Code, recorder.Body.String())
+}
+
 type getLabelsResponse struct {
 	Labels []database.Label `json:"labels"`
 }
