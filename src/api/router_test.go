@@ -4,6 +4,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
+	asserthelper "github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -187,9 +188,7 @@ func caseValidToken(t *testing.T) {
 
 func TestDeclareRoutes(t *testing.T) {
 	e := echo.New()
+	assert := asserthelper.New(t)
 	DeclareRoutes(e)
-
-	if len(e.Routes()) != 9 {
-		t.Errorf("Not enough routes defined, expected %v, got %v", 9, len(e.Routes()))
-	}
+	assert.Equal(13, len(e.Routes()))
 }

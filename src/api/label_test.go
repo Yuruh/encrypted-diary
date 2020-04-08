@@ -100,7 +100,6 @@ func TestGetLabels(t *testing.T) {
 		UserID:       user1.ID,
 	})
 
-
 	context, recorder := BuildEchoContext([]byte(""))
 	context.QueryParams().Set("name", "p")
 
@@ -114,4 +113,65 @@ func TestGetLabels(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(5, len(response.Labels))
 	assert.Equal("Patate", response.Labels[0].Name)
+}
+
+func TestEditLabel(t *testing.T) {
+	assert := asserthelper.New(t)
+
+	user1, _ := SetupUsers()
+	var label database.Label = database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "work",
+			Color: "#FF00AA",
+		},
+		UserID:       user1.ID,
+	}
+	database.GetDB().Create(&label)
+	marshall, _ := json.Marshal(database.PartialLabel{
+		Name:  "Family",
+		Color: "#ff00aa",
+	})
+	context, recorder := BuildEchoContext(marshall)
+
+	context.SetParamNames("id")
+	context.SetParamValues(strconv.Itoa(int(label.ID)))
+
+	err := EditLabel(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, recorder.Code)
+
+	var response addLabelResponse
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+	assert.Equal("Family", response.Label.Name)
+	assert.Equal("#ff00aa", response.Label.Color)
+	assert.Equal(user1.ID, response.Label.UserID)
+}
+
+func TestDeleteLabel(t *testing.T) {
+	assert := asserthelper.New(t)
+
+	user1, _ := SetupUsers()
+	var label database.Label = database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "work",
+			Color: "#FF00AA",
+		},
+		UserID:       user1.ID,
+	}
+	database.GetDB().Create(&label)
+
+	context, recorder := BuildEchoContext([]byte(""))
+
+	context.SetParamNames("id")
+	context.SetParamValues(strconv.Itoa(int(label.ID)))
+
+	err := DeleteLabel(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, recorder.Code)
+
+
+	res := database.GetDB().Find(&label)
+	assert.Equal(true, res.RecordNotFound())
 }

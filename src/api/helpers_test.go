@@ -36,6 +36,16 @@ func SetupUsers() (database.User, database.User) {
 
 func BuildEchoContext(body []byte) (echo.Context, *httptest.ResponseRecorder) {
 	e := echo.New()
+
+	/*
+		To handle route params.
+		Very ugly fix caused by echo internal problems
+		A maintainer suggests this
+		https://github.com/labstack/echo/pull/1463#issuecomment-581107410
+	*/
+	r := e.Router()
+	r.Add("PUT", "/entries/:id", func(ctx echo.Context) error {return nil})
+
 	request, _ := http.NewRequest("POST", "/entries", bytes.NewReader(body))
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	recorder := httptest.NewRecorder()

@@ -103,3 +103,68 @@ func AddLabel(context echo.Context) error {
 
 	return context.JSON(http.StatusCreated, map[string]interface{}{"label": label})
 }
+
+
+func EditLabel(context echo.Context) error {
+	var user database.User = context.Get("user").(database.User)
+
+	id, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		return context.String(http.StatusBadRequest, "Bad route parameter")
+	}
+	var label database.Label
+	result := database.GetDB().
+		Where("ID = ?", id).
+		Where("user_id = ?", user.ID).
+		First(&label)
+	if result.RecordNotFound() {
+		return context.String(http.StatusNotFound, "Label not found")
+	}
+
+	body := helpers.ReadBody(context.Request().Body)
+
+	var partialLabel database.PartialLabel
+
+	err = json.Unmarshal([]byte(body), &partialLabel)
+	if err != nil {
+		return context.String(http.StatusBadRequest, "Could not read JSON body")
+	}
+
+	label.PartialLabel = partialLabel
+
+	err = database.Update(&label)
+
+	if err, ok := err.(validator.ValidationErrors); ok {
+		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
+	}
+	if err != nil {
+		fmt.Println(err.Error())
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	return context.JSON(http.StatusOK, map[string]interface{}{"label": label})
+}
+
+// todo Only the type change from DeleteEntry, must be refactored somehow
+func DeleteLabel(context echo.Context) error {
+	var user database.User = context.Get("user").(database.User)
+
+	id, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		return context.String(http.StatusBadRequest, "Bad route parameter")
+	}
+	var label database.Label
+	result := database.GetDB().
+		Where("ID = ?", id).
+		Where("user_id = ?", user.ID).
+		First(&label)
+	if result.RecordNotFound() {
+		return context.String(http.StatusNotFound, "Entry not found")
+	}
+	result = database.GetDB().Delete(&label)
+	if result.Error != nil {
+		fmt.Println(result.Error.Error())
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	return context.NoContent(http.StatusOK)
+}
