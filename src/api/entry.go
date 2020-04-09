@@ -26,7 +26,7 @@ func GetEntries(c echo.Context) error {
 		Preload("Labels").
 		Where("user_id = ?", user.ID).
 		Select("id, title, updated_at, created_at").
-		Order("updated_at desc").
+		Order("created_at desc").
 		Limit(limit).
 		Offset(offset).
 		Find(&entries)
@@ -143,11 +143,20 @@ func EditEntry(context echo.Context) error {
 		return context.String(http.StatusNotFound, "Entry not found")
 	}
 
+
 	builtEntry, errorString := buildEntryFromRequestBody(context, user)
 	if errorString != "" {
 		return context.String(http.StatusBadRequest, errorString)
 	}
 	builtEntry.ID = entry.ID
+
+	/*
+		We clear all associations before inserting the correct ones.
+		This creates two problems:
+			* if the update goes wrong, all labels are lost
+			* not optimized
+	 */
+	database.GetDB().Model(&entry).Association("Labels").Clear()
 
 	err = database.Update(&builtEntry)
 	if err, ok := err.(validator.ValidationErrors); ok {
