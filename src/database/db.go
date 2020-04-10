@@ -52,9 +52,17 @@ func Connect() *gorm.DB {
 	return db
 }
 
+/*
+	Auto Migrate seems to fail to create foreign keys, hence creation of a many to many relation for entries / label failed
+
+	https://github.com/jinzhu/gorm/issues/450#issuecomment-487958084
+ */
 func RunMigration() {
+	instance.Exec("CREATE EXTENSION fuzzystrmatch")
+
 	instance.AutoMigrate(&User{})
 	instance.AutoMigrate(&Entry{})
+	instance.AutoMigrate(&Label{})
 
 	//	instance.Create(&models.User{Email: "toto@address.com"})
 	//	db.Create(&models.User{Email: "tzata@tata.com", Password:"azer"})

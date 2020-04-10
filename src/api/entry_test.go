@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/labstack/echo/v4"
+	asserthelper "github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,29 +20,6 @@ type getEntriesResponse struct {
 
 type getEntryResponse struct {
 	Entry database.Entry `json:"entry"`
-}
-
-
-const UserHasAccessEmail = "user1@user.com"
-const UserNoAccessEmail = "user2@user.com"
-
-func SetupUsers() {
-	err := database.GetDB().Unscoped().Delete(database.User{})
-	if err.Error != nil {
-		fmt.Println(err.Error.Error())
-	}
-	var user1 = database.User{
-		BaseModel: database.BaseModel{},
-		Email:     UserHasAccessEmail,
-		Password:  "azer",
-	}
-	database.Insert(&user1)
-	var user2 = database.User{
-		BaseModel: database.BaseModel{},
-		Email:     UserNoAccessEmail,
-		Password:  "azer",
-	}
-	database.Insert(&user2)
 }
 
 func TestGetEntry(t *testing.T) {
@@ -105,6 +83,14 @@ func TestGetEntries(t *testing.T) {
 	SetupUsers()
 	var user database.User
 	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	var label database.Label = database.Label{
+		PartialLabel: database.PartialLabel{
+			Name:  "Work",
+			Color: "#FF0000",
+		},
+		UserID:       user.ID,
+	}
+	database.GetDB().Create(&label)
 	for i := 0; i < 13; i++ {
 		entry := database.Entry{
 			PartialEntry: database.PartialEntry{
@@ -112,6 +98,7 @@ func TestGetEntries(t *testing.T) {
 				Title:   "Entry " + strconv.Itoa(i),
 			},
 			UserID:user.ID,
+			Labels: []database.Label{label},
 		}
 		_ = database.Insert(&entry)
 	}
@@ -123,38 +110,25 @@ func TestGetEntries(t *testing.T) {
 }
 
 func caseNoLimit(t *testing.T) {
-	e := echo.New()
-	request, err := http.NewRequest("GET", "/entries", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	assert := asserthelper.New(t)
 
-	recorder := httptest.NewRecorder()
-	context := e.NewContext(request, recorder)
-	var user database.User
-	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
-	context.Set("user", user)
+	context, recorder := BuildEchoContext([]byte(""))
 
-	err = GetEntries(context)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if recorder.Code != http.StatusOK {
-		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
-	}
+	err := GetEntries(context)
+	assert.Nil(err)
+
+	assert.Equal(http.StatusOK, recorder.Code)
 
 	var response getEntriesResponse
 	err = json.Unmarshal(recorder.Body.Bytes(), &response)
-	if err != nil {
-		t.Error("Could not read response")
-	}
+	assert.Nil(err)
+	assert.Equal(10, len(response.Entries))
 
-	if len(response.Entries) != 10 {
-		t.Errorf("Bad number of entries, expected %v, got %v", 10, len(response.Entries))
-	}
-	if response.Entries[3].Content != "" {
-		t.Errorf("Expected empty content, got %v", response.Entries[0].Content)
+	// By design we don't fill content
+	assert.Equal("", response.Entries[3].Content)
+
+	if assert.NotNil(response.Entries[0].Labels) {
+		assert.Equal("Work", response.Entries[0].Labels[0].Name)
 	}
 }
 
@@ -209,6 +183,8 @@ func caseBadPage(t *testing.T) {
 }
 
 func caseLimitOk(t *testing.T) {
+	assert := asserthelper.New(t)
+
 	e := echo.New()
 	q:= make(url.Values)
 	q.Set("page", "2")
@@ -229,23 +205,16 @@ func caseLimitOk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recorder.Code != http.StatusOK {
-		t.Errorf("Bad status, expected %v, got %v", http.StatusOK, recorder.Code)
-	}
+	assert.Equal(http.StatusOK, recorder.Code)
 
 	var response getEntriesResponse
 	err = json.Unmarshal(recorder.Body.Bytes(), &response)
 	if err != nil {
 		t.Error("Could not read response")
 	}
+	assert.Equal(3, len(response.Entries))
 
-	if len(response.Entries) != 3 {
-		t.Errorf("Bad number of entries, expected %v, got %v", 10, len(response.Entries))
-	}
-
-	if response.Entries[2].Title != "Entry 7" {
-		t.Errorf("Bad Entry title, expected %v, got %v", "Entry 5", response.Entries[2].Title)
-	}
+	assert.Equal("Entry 7", response.Entries[2].Title)
 }
 
 var validEntry = database.Entry{
@@ -437,9 +406,14 @@ func testEditValidEntry(t *testing.T) {
 }
 
 func TestAddEntry(t *testing.T) {
+	SetupUsers()
+
+
 	t.Run("Valid arg", testAddValidEntry)
 	t.Run("Invalid arg", testAddInvalidEntry)
 	t.Run("Invalid json", testAddInvalidJson)
+
+	t.Run("Associate existing labels", testAssociateLabels)
 }
 
 func runAddEntry(arg []byte, t *testing.T) *httptest.ResponseRecorder {
@@ -510,4 +484,68 @@ func testAddInvalidJson(t *testing.T) {
 	if recorder.Code != http.StatusBadRequest {
 		t.Errorf("Bad status, expected %v, got %v", http.StatusBadRequest, recorder.Code)
 	}
+}
+
+func testAssociateLabels(t *testing.T) {
+	assert := asserthelper.New(t)
+
+	var user1 database.User
+	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user1)
+	var user2 database.User
+	database.GetDB().Where("email = ?", UserNoAccessEmail).First(&user2)
+
+	labelWorkUsr1 := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "Work",
+			Color: "#123456",
+		},
+		UserID:       user1.ID,
+	}
+	labelFamilyUsr1 := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "Family",
+			Color: "#654321",
+		},
+		UserID:       user1.ID,
+	}
+	labelFamilyUsr2 := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name: "Family",
+			Color: "#AABBCC",
+		},
+		UserID:       user2.ID,
+	}
+	database.GetDB().Create(&labelWorkUsr1)
+
+	database.GetDB().Create(&labelFamilyUsr1)
+
+	database.GetDB().Create(&labelFamilyUsr2)
+
+	marshall, _ := json.Marshal(AddEntryRequestBody{
+		PartialEntry: database.PartialEntry{
+			Title: "Entry with labels",
+		},
+		LabelsID:     []uint{labelWorkUsr1.ID, labelFamilyUsr2.ID, labelFamilyUsr1.ID},
+	})
+	recorder := runAddEntry(marshall, t)
+
+	assert.Equal(http.StatusCreated, recorder.Code, recorder.Body.String())
+
+	var response response
+
+	err := json.Unmarshal(recorder.Body.Bytes(), &response)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var entries []database.Entry
+	result := database.GetDB().First(&entries).Where("ID = ?", response.Entry.ID)
+
+	assert.Equal(false, result.RecordNotFound())
+	assert.Equal("Entry with labels", response.Entry.Title)
+
+	assert.NotNil(response.Entry.Labels)
+	assert.Equal(2, len(response.Entry.Labels))
+	assert.Equal("#654321", response.Entry.Labels[1].Color)
+
 }

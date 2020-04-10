@@ -59,10 +59,15 @@ func DeclareRoutes(app *echo.Echo) {
 
 	app.GET("/entries", GetEntries)
 	app.GET("/entries/:id", GetEntry)
-
 	app.POST("/entries", AddEntry, RequireBody)
 	app.PUT("/entries/:id", EditEntry, RequireBody)
 	app.DELETE("/entries/:id", DeleteEntry)
+
+	app.GET("/labels", GetLabels)
+	app.POST("/labels", AddLabel, RequireBody)
+	app.PUT("/labels/:id", EditLabel, RequireBody)
+	app.DELETE("/labels/:id", DeleteLabel)
+	
 }
 
 func RunHttpServer()  {

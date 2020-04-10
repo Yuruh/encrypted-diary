@@ -15,32 +15,18 @@ import (
 func GetEntries(c echo.Context) error {
 	var user database.User = c.Get("user").(database.User)
 
-	var limit = 10
-	var offset = 0
-	var err error
+	limit, offset, err := GetPaginationParams(10, c)
 
-	if c.QueryParam("limit") != "" {
-		limit, err = strconv.Atoi(c.QueryParam("limit"))
-		if err != nil {
-			return c.String(http.StatusBadRequest, "Bad query param 'limit', expected number")
-		}
-	}
-
-	if c.QueryParam("page") != "" {
-		page, err := strconv.Atoi(c.QueryParam("limit"))
-		if err != nil {
-			return c.String(http.StatusBadRequest, "Bad query param 'page', expected number")
-		}
-		if page >= 2 {
-			offset = limit * (page - 2)
-		}
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Bad query parameters")
 	}
 
 	var entries []database.Entry
 	database.GetDB().
+		Preload("Labels").
 		Where("user_id = ?", user.ID).
 		Select("id, title, updated_at, created_at").
-		Order("updated_at desc").
+		Order("created_at desc").
 		Limit(limit).
 		Offset(offset).
 		Find(&entries)
@@ -56,6 +42,7 @@ func GetEntry(context echo.Context) error {
 	}
 	var entry database.Entry
 	result := database.GetDB().
+		Preload("Labels").
 		Where("ID = ?", id).
 		Where("user_id = ?", user.ID).
 		First(&entry)
@@ -70,7 +57,6 @@ func GetEntry(context echo.Context) error {
 		Where("created_at > ?", entry.CreatedAt).
 		First(&nextEntry)
 	if !result.RecordNotFound() {
-		fmt.Println(nextEntry.Title)
 		ret["next_entry_id"] = nextEntry.ID
 	}
 	var prevEntry database.Entry
@@ -80,35 +66,27 @@ func GetEntry(context echo.Context) error {
 		Where("created_at < ?", entry.CreatedAt).
 		First(&prevEntry)
 	if !result.RecordNotFound() {
-		fmt.Println(nextEntry.Title)
 		ret["prev_entry_id"] = prevEntry.ID
 	}
 
-	// todo refacto, and / or as an exercise, build this as a single data base request;
+	// todo refacto, or as an exercise, build this as a single data base request;
 
 	return context.JSON(http.StatusOK, ret)
+}
+
+type AddEntryRequestBody struct {
+	database.PartialEntry
+	LabelsID []uint `json:"labels_id"`
 }
 
 func AddEntry(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
-	body := helpers.ReadBody(context.Request().Body)
-
-	var partialEntry database.PartialEntry
-
-	err := json.Unmarshal([]byte(body), &partialEntry)
-	if err != nil {
-		println(err.Error())
-		return context.String(http.StatusBadRequest, "Could not read JSON body")
+	entry, errorString := buildEntryFromRequestBody(context, user)
+	if errorString != "" {
+		return context.String(http.StatusBadRequest, errorString)
 	}
-
-	var entry = database.Entry{
-		PartialEntry: partialEntry,
-		UserID:user.ID,
-	}
-
-	err = database.Insert(&entry)
-
+	err := database.Insert(&entry)
 
 	if err, ok := err.(validator.ValidationErrors); ok {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
@@ -119,6 +97,34 @@ func AddEntry(context echo.Context) error {
 	}
 
 	return context.JSON(http.StatusCreated, map[string]interface{}{"entry": entry})
+}
+
+func buildEntryFromRequestBody(context echo.Context, user database.User) (database.Entry, string) {
+	body := helpers.ReadBody(context.Request().Body)
+
+	var requestBody AddEntryRequestBody
+
+	err := json.Unmarshal([]byte(body), &requestBody)
+	if err != nil {
+		return database.Entry{}, "Could not read JSON body"
+	}
+
+	// request to find all users label in labels_id
+	var labels []database.Label
+
+	response := database.GetDB().
+		Where("user_id = ?", user.ID).
+		Where("id IN (?)", requestBody.LabelsID).
+		Find(&labels)
+	if response.Error != nil {
+		fmt.Println(response.Error.Error())
+	}
+
+	return database.Entry{
+		PartialEntry: requestBody.PartialEntry,
+		UserID:user.ID,
+		Labels: labels,
+	}, ""
 }
 
 func EditEntry(context echo.Context) error {
@@ -137,17 +143,22 @@ func EditEntry(context echo.Context) error {
 		return context.String(http.StatusNotFound, "Entry not found")
 	}
 
-	body := helpers.ReadBody(context.Request().Body)
 
-	var partialEntry database.PartialEntry
-
-	err = json.Unmarshal([]byte(body), &partialEntry)
-	if err != nil {
-		return context.String(http.StatusBadRequest, "Could not read JSON body")
+	builtEntry, errorString := buildEntryFromRequestBody(context, user)
+	if errorString != "" {
+		return context.String(http.StatusBadRequest, errorString)
 	}
-	entry.PartialEntry = partialEntry
+	builtEntry.ID = entry.ID
 
-	err = database.Update(&entry)
+	/*
+		We clear all associations before inserting the correct ones.
+		This creates two problems:
+			* if the update goes wrong, all labels are lost
+			* not optimized
+	 */
+	database.GetDB().Model(&entry).Association("Labels").Clear()
+
+	err = database.Update(&builtEntry)
 	if err, ok := err.(validator.ValidationErrors); ok {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}

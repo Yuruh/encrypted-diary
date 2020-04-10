@@ -22,3 +22,8 @@ Only 2 routes should require password: login, and change-password (which has to 
 
 - Search by approximate title (https://www.postgresql.org/docs/9.1/fuzzystrmatch.html, fuzzy / approximate string matching)
 - Search by tag, with tag management (crud, name / color) and autocompletion in editors
+
+
+# Resources
+
+https://core.telegram.org/techfaq#q-how-does-end-to-end-encryption-work-in-mtproto
