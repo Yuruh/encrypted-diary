@@ -1,46 +1,51 @@
 language: go
-
 go:
-  - 1.13.x
-
+- 1.13.x
 services:
-  - docker
-
+- docker
 env:
-#  - GO111MODULE=on    why does it creates two jobs ?
+  matrix:
   - DOCKER_COMPOSE_VERSION=1.21.2
-
+  global:
+  - secure: YiXh6eE9vAsOu1Rb6I1EPRNOGZqDlFyJ5EGv1RWT2tQcBnuQB3svBH4easIhMB75GBrqD6UOPSMbnh4sEL5rji5OMK0ofuO94BUAuCdrSsmiZjEUProIj6NxaPeAL4JY1JYmq8ipgW9fwds0b9ibbT/RbeAPlOfd0nm9iS4c5aPDXM1QbEaaYh9oLlkKxDpb5LnqSafn+42kdPNUIA1l+Cxkq8tt1wPNQktIFZ5lWaKUTPvrnPSipL0BAnA2VpuUnbjglo+eskQG1hSmDnF+XV7IYk7TyxQtaDHL5OdSfMXNUITr6zQQUOg9XUhapoyuQCGM70bIsqrj3+lwC+5YRkOZTajB1puAF0Okgy9AgHVLrZbtyGQLg1mYes+f0BLkZtTkjLf8MWgP874xkAxW5dy1mjyAEPg6BzM1cjA0i8UT0Dz5LYydjN0GwhdN5bqNK4YaYfIw07Y4dcibBAX5y0sfrbTsUK66usqKXX38VRQ89kDiu7AQt55j2GVdgYab7onTc89OaTVZq84iRA+90/UpQyVCy9kW/1kwoDF2C2RAUZItF9YWTeUHL+nYoKgNkWmJ85zMMcwfxHRBQTP4JBH1TiEQX3sNrCQul9ve7yNot7pS2dEiPzk/40bN08iUuaxXgMFp2Trj9v9XabpKyEi1/DaU0NRQUxs063Os+rg=
+  - secure: PVh3Db3Ph2ZDJXGOqQqFU87EGnrVuFu2VhKTvVncapoC0nYAUmaqhtaBdjHY6kw9ok+EXmG1r2uc9FgpCOcxjUgdgdh+PHcCvejD6+vBAEPJIBvDaMOCKupqgA2H/T4CZxeplMN/emqhI+pajjERckETj/JRPWIej78WKHLu9k/KCkm8myWjVA7Wey7wTbhm6tu4VXH7hj70uRTwk3hkI6cYv4DaWD7zN8ABwEoiZsxy7PnbTEbF/oXQNkc3kHgAdIY31YWebR/KvJTME82WAFtVTRgjOODZf5dg5OyGFGaAxInGRQdpw47xYwY/GUej5BjEOf4OlX0zEr+d7KLeOMfiLKSc7llfVZucUacCqB8r+YuOd50JhQFHfJ03+JVMkhDWSLbo1sGGElBtW9zlOXWDfOBaySApdefGmw7OKkWQNLdSldAmpYU1O1/nsD5hgcDcy87NUwBOVKEih8f0HAROvzdoVz3bNF85j+5KqRA4AbGqaPfiHDwu3iCJLxYJcUyseZ2zk2DdSQmPP0a2olV2Va7VLuuqArIEYZA/9elTCenmSfjyk5sTQOlyFRYAVDTzcBLvnDtogGo0+yJvwn1hglSHg5tUskn3HXmNqHkdNTwyzGPz3I7sE0HEUxpwRgiBGTm3Dx/RdyIYBUGHqn8m2/veGHzvp88zc8IPlrk=
 before_install:
-  - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
-# Only clone the most recent commit.
+- sudo rm /usr/local/bin/docker-compose
+- curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname
+  -s`-`uname -m` > docker-compose
+- chmod +x docker-compose
+- sudo mv docker-compose /usr/local/bin
 git:
   depth: 1
-
 script:
-  - docker-compose -f docker-compose.test.yml build
-  - docker-compose -f docker-compose.test.yml -p diary-tests up -d
-  - docker exec -it diary-tests_diary-api_1 go test ./... -race -coverprofile=coverage.txt -covermode=atomic
-
+- docker-compose -f docker-compose.test.yml build
+- docker-compose -f docker-compose.test.yml -p diary-tests up -d
+- docker exec -it diary-tests_diary-api_1 go test ./... -race -coverprofile=coverage.txt
+  -covermode=atomic
 jobs:
   include:
-    - stage: test
-      script:
-        - docker-compose -f docker-compose.test.yml build
-        - docker-compose -f docker-compose.test.yml -p diary-tests up -d
-        - docker exec -it diary-tests_diary-api_1 go test ./... -race -coverprofile=coverage.txt -covermode=atomic
-      after_success:
-        - bash <(curl -s https://codecov.io/bash)
-    - stage: deploy
-      script:
-        - echo "TO DO"
-#        - sudo apt install gawk
-#        - export NEXT_TAG=$(./get_next_tag.sh $TRAVIS_PULL_REQUEST_BRANCH $(git describe --abbrev=0))
-#        - echo "Next version = $NEXT_TAG"
-#        - docker build -t yuruh/encrypted-diary-web-app:$NEXT_TAG .
-#        - docker login -u yuruh -p $DOCKER_PWD
-#        - git tag -a $NEXT_TAG -m "$TRAVIS_COMMIT_MESSAGE"
-#        - git push "https://$GITHUB_TOKEN@github.com/Yuruh/encrypted-diary-web-app.git --tags
-#        - docker push yuruh/encrypted-diary-web-app:$NEXT_TAG
+  - stage: test
+    script:
+    - docker-compose -f docker-compose.test.yml build
+    - docker-compose -f docker-compose.test.yml -p diary-tests up -d
+    - docker exec -it diary-tests_diary-api_1 go test ./... -race -coverprofile=coverage.txt
+      -covermode=atomic
+    after_success:
+    - bash <(curl -s https://codecov.io/bash)
+  - stage: deploy
+    script:
+      - sudo apt install gawk
+      - echo $TRAVIS_COMMIT_MESSAGE
+      - export NEXT_TAG=$(./get_next_tag.sh "$TRAVIS_COMMIT_MESSAGE" $(git describe
+        --abbrev=0))
+      - echo "Next version = $NEXT_TAG"
+      - docker build -t yuruh/encrypted-diary:$NEXT_TAG .
+      - docker login -u yuruh -p $DOCKER_TOKEN
+      - git tag -a $NEXT_TAG -m "$TRAVIS_COMMIT_MESSAGE"
+      - git push "https://$GITHUB_TOKEN@github.com/Yuruh/encrypted-diary.git"
+        --tags
+      - docker push yuruh/encrypted-diary:$NEXT_TAG
+stages:
+  - name: test
+  - name: deploy
+    if: branch = master AND type = push
