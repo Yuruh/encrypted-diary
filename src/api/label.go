@@ -55,6 +55,7 @@ func GetLabels(context echo.Context) error {
 		// We use levenshtein https://www.postgresql.org/docs/9.1/fuzzystrmatch.html
 		// Note: It seems to be case influenced, so we work on lowercase
 		Order(gorm.Expr("levenshtein(LOWER(?), SUBSTRING(Lower(name), 1, LENGTH(?))) ASC", name, name)).
+		//todo order by number of occurences ?
 		Find(&labels)
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})
