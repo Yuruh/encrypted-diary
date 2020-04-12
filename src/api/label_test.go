@@ -78,6 +78,55 @@ type getLabelsResponse struct {
 	Labels []database.Label `json:"labels"`
 }
 
+func TestGetLabelsWithExcluded(t *testing.T) {
+	user1, _ := SetupUsers()
+	assert := asserthelper.New(t)
+
+	work := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name:  "Work",
+			Color: "#fff",
+		},
+		UserID: user1.ID,
+	}
+	family := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name:  "Family",
+			Color: "#fff",
+		},
+		UserID: user1.ID,
+
+	}
+	love := database.Label{
+		PartialLabel: database.PartialLabel{
+			Name:  "Love",
+			Color: "#fff",
+		},
+		UserID: user1.ID,
+	}
+
+	database.GetDB().Create(&work)
+	database.GetDB().Create(&family)
+	database.GetDB().Create(&love)
+
+
+	context, recorder := BuildEchoContext([]byte(""))
+	excluded := []uint{family.ID, work.ID}
+	marshalled, _ := json.Marshal(excluded)
+	context.QueryParams().Set("excluded_ids", string(marshalled))
+
+	err := GetLabels(context)
+	assert.Equal(http.StatusOK, recorder.Code)
+
+	var response getLabelsResponse
+	assert.Nil(err)
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+	assert.Equal(1, len(response.Labels))
+	assert.Equal("Love", response.Labels[0].Name)
+}
+
 func TestGetLabels(t *testing.T) {
 	user1, _ := SetupUsers()
 	assert := asserthelper.New(t)
