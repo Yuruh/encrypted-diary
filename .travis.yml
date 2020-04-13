@@ -32,19 +32,19 @@ jobs:
       -covermode=atomic
     after_success:
     - bash <(curl -s https://codecov.io/bash)
-  - stage: deploy
-    script:
-      - sudo apt install gawk
-      - echo $TRAVIS_COMMIT_MESSAGE
-      - export NEXT_TAG=$(./get_next_tag.sh "$TRAVIS_COMMIT_MESSAGE" $(git describe
-        --abbrev=0))
-      - echo "Next version = $NEXT_TAG"
-      - docker build -t yuruh/encrypted-diary:$NEXT_TAG .
-      - docker login -u yuruh -p $DOCKER_TOKEN
-      - git tag -a $NEXT_TAG -m "$TRAVIS_COMMIT_MESSAGE"
-      - git push "https://$GITHUB_TOKEN@github.com/Yuruh/encrypted-diary.git"
-        --tags
-      - docker push yuruh/encrypted-diary:$NEXT_TAG
+#  - stage: deploy
+#    script:
+#      - sudo apt install gawk
+#      - echo $TRAVIS_COMMIT_MESSAGE
+#      - export NEXT_TAG=$(./get_next_tag.sh "$TRAVIS_COMMIT_MESSAGE" $(git describe
+#        --abbrev=0))
+#      - echo "Next version = $NEXT_TAG"
+#      - docker build -t yuruh/encrypted-diary:$NEXT_TAG .
+#      - docker login -u yuruh -p $DOCKER_TOKEN
+#      - git tag -a $NEXT_TAG -m "$TRAVIS_COMMIT_MESSAGE"
+#      - git push "https://$GITHUB_TOKEN@github.com/Yuruh/encrypted-diary.git"
+#        --tags
+#      - docker push yuruh/encrypted-diary:$NEXT_TAG
 stages:
   - name: test
 #  - name: deploy
