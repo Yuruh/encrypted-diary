@@ -47,14 +47,31 @@ func GetLabels(context echo.Context) error {
 	// Should it be sanitized ?
 	name := context.QueryParam("name")
 
+	// We read excluded as a json array. Not sure if it is good practice but theres no standard in url and it seems the easiest way
+	excludedMarshall := context.QueryParam("excluded_ids")
+
+	// We initialize with -1 so query uses an impossible value in the NOT IN clause
+	var excluded = make([]int, 0)
+	if excludedMarshall != "" {
+		err = json.Unmarshal([]byte(excludedMarshall), &excluded)
+		if err != nil {
+			return context.String(http.StatusBadRequest, "Bad query parameters")
+		}
+	}
+	if len(excluded) == 0 {
+		excluded = []int{-1}
+	}
+
 	var labels []database.Label
 	database.GetDB().
 		Where("user_id = ?", user.ID).
+		Not("id IN (?)", excluded).
 		Limit(limit).
 		Offset(offset).
 		// We use levenshtein https://www.postgresql.org/docs/9.1/fuzzystrmatch.html
 		// Note: It seems to be case influenced, so we work on lowercase
 		Order(gorm.Expr("levenshtein(LOWER(?), SUBSTRING(Lower(name), 1, LENGTH(?))) ASC", name, name)).
+		//todo order by number of occurences ?
 		Find(&labels)
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})

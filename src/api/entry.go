@@ -11,7 +11,8 @@ import (
 	"strconv"
 )
 
-// Handler
+
+// For user queries: can include vs must include
 func GetEntries(c echo.Context) error {
 	var user database.User = c.Get("user").(database.User)
 
@@ -153,7 +154,7 @@ func EditEntry(context echo.Context) error {
 	/*
 		We clear all associations before inserting the correct ones.
 		This creates two problems:
-			* if the update goes wrong, all labels are lost
+			* if the update goes wrong, all labels association are lost
 			* not optimized
 	 */
 	database.GetDB().Model(&entry).Association("Labels").Clear()
@@ -167,7 +168,7 @@ func EditEntry(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.JSON(http.StatusOK, map[string]interface{}{"entry": entry})
+	return context.JSON(http.StatusOK, map[string]interface{}{"entry": builtEntry})
 }
 
 func DeleteEntry(context echo.Context) error {
