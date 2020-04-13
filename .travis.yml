@@ -47,5 +47,5 @@ jobs:
       - docker push yuruh/encrypted-diary:$NEXT_TAG
 stages:
   - name: test
-  - name: deploy
-    if: branch = master AND type = push
+#  - name: deploy
+#    if: branch = master AND type = push
