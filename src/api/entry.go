@@ -48,17 +48,24 @@ func GetEntries(c echo.Context) error {
 	}
 
 	var entries []database.Entry
-	database.GetDB().
+	err = database.GetDB().
 		Preload("Labels").
 		Where("user_id = ?", user.ID).
 		Select("id, title, updated_at, created_at, LENGTH(title)").
 		Order("created_at desc").
 		Limit(limit).
 		Offset(offset).
-		Find(&entries)
+		Find(&entries).
+		Error
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
 
-	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page))
+
+	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page), database.GetDB().Where("user_id = ?", user.ID))
 	if err != nil {
 		fmt.Println(err.Error())
 		return c.NoContent(http.StatusInternalServerError)

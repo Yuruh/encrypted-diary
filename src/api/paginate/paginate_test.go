@@ -21,8 +21,7 @@ func TestGetPaginationResults(t *testing.T) {
 		_ = database.Insert(&entry)
 	}
 
-
-	pagination, err := GetPaginationResults("entries", 3, 2)
+	pagination, err := GetPaginationResults("entries", 3, 2, database.GetDB())
 	assert.Nil(err)
 	assert.Equal((uint)(2), pagination.Page)
 	assert.Equal((uint)(3), pagination.Limit)
@@ -33,9 +32,29 @@ func TestGetPaginationResults(t *testing.T) {
 	assert.Equal(true, pagination.HasPrevPage)
 	assert.Equal((uint)(5), pagination.TotalPages)
 
-	pagination, err = GetPaginationResults("unexist", 4, 2)
+	pagination, err = GetPaginationResults("unexist", 4, 2, database.GetDB())
 	assert.NotNil(err)
 
-	pagination, err = GetPaginationResults("entries", 0, 2)
+	pagination, err = GetPaginationResults("entries", 0, 2, database.GetDB())
 	assert.NotNil(err)
+
+
+	entry := database.Entry{
+		PartialEntry: database.PartialEntry{
+			Content: "allo",
+			Title:   "Paginate me",
+		},
+	}
+	_ = database.Insert(&entry)
+
+	pagination, err = GetPaginationResults("entries", 5, 1, database.GetDB().Where("id = ?", entry.ID))
+	assert.Nil(err)
+	assert.Equal((uint)(1), pagination.Page)
+	assert.Equal((uint)(5), pagination.Limit)
+	assert.Equal((uint)(0), pagination.NextPage)
+	assert.Equal((uint)(0), pagination.PrevPage)
+	assert.Equal((uint)(1), pagination.TotalMatches)
+	assert.Equal(false, pagination.HasNextPage)
+	assert.Equal(false, pagination.HasPrevPage)
+	assert.Equal((uint)(1), pagination.TotalPages)
 }

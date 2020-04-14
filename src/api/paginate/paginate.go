@@ -2,7 +2,8 @@ package paginate
 
 import (
 	"errors"
-	"github.com/Yuruh/encrypted-diary/src/database"
+	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo/v4"
 	"strconv"
 )
@@ -46,18 +47,22 @@ func GetPaginationParams(defaultLimit int, context echo.Context) (limit int, pag
 	return limit, page, offset, nil
 }
 
-// todo add where
-func GetPaginationResults(table string, limit uint, page uint) (Pagination, error) {
+// take a *db as param with the where cause already applied
+func GetPaginationResults(table string, limit uint, page uint, db *gorm.DB) (Pagination, error) {
 	var pagination Pagination
 	if limit == 0 {
 		return Pagination{}, errors.New("trying to divide by 0")
 	}
 
 	// Gets total matches
-	db := database.GetDB().Raw("SELECT COUNT(*) as total_matches FROM " + table).Scan(&pagination)
-
+	err := db.Select("COUNT(*) as total_matches").Table(table).Scan(&pagination).Error
+	if err != nil {
+		fmt.Println(err.Error())
+		return Pagination{}, err
+	}
 	pagination.TotalPages = pagination.TotalMatches / limit
-	if pagination.TotalPages % limit != 0 {
+	fmt.Println(pagination.TotalMatches, limit, pagination.TotalPages % limit)
+	if pagination.TotalPages % limit != 0 || limit > pagination.TotalMatches {
 		pagination.TotalPages++
 	}
 	pagination.Page = page
@@ -72,11 +77,5 @@ func GetPaginationResults(table string, limit uint, page uint) (Pagination, erro
 	}
 	pagination.Limit = limit
 
-	// This method should be preferred as it prevents sqi injection, but there's an error
-	// SELECT COUNT('id') as total_matches FROM "entries" fails because of the quotes. The request does work from pg admin though
-	// db = database.GetDB().Table(table).Select("COUNT(?) as total_matches", "id").Scan(&test)
-	if db.Error != nil {
-		return Pagination{}, db.Error
-	}
 	return pagination, nil
 }
