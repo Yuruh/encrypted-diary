@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Yuruh/encrypted-diary/src/api/paginate"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/go-playground/validator/v10"
@@ -13,33 +14,10 @@ import (
 	"strings"
 )
 
-func GetPaginationParams(defaultLimit int, context echo.Context) (limit int, offset int, err error) {
-	limit = defaultLimit
-	offset = 0
-
-	if context.QueryParam("limit") != "" {
-		limit, err = strconv.Atoi(context.QueryParam("limit"))
-		if err != nil {
-			return 0, 0, err
-		}
-	}
-
-	if context.QueryParam("page") != "" {
-		page, err := strconv.Atoi(context.QueryParam("page"))
-		if err != nil {
-			return 0, 0, err
-		}
-		if page >= 1 {
-			offset = limit * (page - 1)
-		}
-	}
-	return limit, offset, nil
-}
-
 func GetLabels(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
-	limit, offset, err := GetPaginationParams(5, context)
+	limit, _, offset, err := paginate.GetPaginationParams(5, context)
 	if err != nil {
 		return context.String(http.StatusBadRequest, "Bad query parameters")
 	}
@@ -70,7 +48,7 @@ func GetLabels(context echo.Context) error {
 		Offset(offset).
 		// We use levenshtein https://www.postgresql.org/docs/9.1/fuzzystrmatch.html
 		// Note: It seems to be case influenced, so we work on lowercase
-		Order(gorm.Expr("levenshtein(LOWER(?), SUBSTRING(Lower(name), 1, LENGTH(?))) ASC", name, name)).
+		Order(gorm.Expr("levenshtein(LOWER(?), SUBSTRING(LOWER(labels.name), 1, LENGTH(?))) ASC", name, name)).
 		//todo order by number of occurences ?
 		Find(&labels)
 

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Yuruh/encrypted-diary/src/api/paginate"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/go-playground/validator/v10"
@@ -11,12 +12,36 @@ import (
 	"strconv"
 )
 
+/*
+	Je veux inférrer ce que l'user demande à partir du champs "search"
+
+	Décision: on return uniquement des entrées. (On pourrait choisir de retourner un calendrier, un label, ce genre de trucs)
+
+	Les 3 axes possible: recherche par date, par label ou par titre
+
+	Par titre: full text search ? probablement overkill car les titres ne sont pas long, il doit y avoir plus opti
+
+	Par label: levenshtein, cf requete du GET /label
+
+	Par date: "janvier 2020", "december", "01/02/2020", "01 02 2020",
+
+	c'est le plus compliqué, si je veux respecter plusieurs langages et format de dates
+
+	coté front, avoir un petit (?) pour expliquer les formats et la recherche en général
+
+	et avoir un load moar sur le dropdown de la recherche
+
+	avoir un "indicateur de performance" pour chaque et order par cet indicateur
+
+	possibilité de cumuler les requetes par exemple  "Mars 2020;Games" --> sort en priorité les entrées qui contiennent le label Games pendant le mois de mars 2020
+ */
 
 // For user queries: can include vs must include
 func GetEntries(c echo.Context) error {
 	var user database.User = c.Get("user").(database.User)
 
-	limit, offset, err := GetPaginationParams(10, c)
+	limit, page, offset, err := paginate.GetPaginationParams(10, c)
+	fmt.Println(page)
 
 	if err != nil {
 		return c.String(http.StatusBadRequest, "Bad query parameters")
@@ -26,12 +51,20 @@ func GetEntries(c echo.Context) error {
 	database.GetDB().
 		Preload("Labels").
 		Where("user_id = ?", user.ID).
-		Select("id, title, updated_at, created_at").
+		Select("id, title, updated_at, created_at, LENGTH(title)").
 		Order("created_at desc").
 		Limit(limit).
 		Offset(offset).
 		Find(&entries)
-	return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries})
+
+
+	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page))
+	if err != nil {
+		fmt.Println(err.Error())
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries, "pagination": pagination})
 }
 
 func GetEntry(context echo.Context) error {
