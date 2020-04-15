@@ -103,6 +103,8 @@ func AddLabel(context echo.Context) error {
 func EditLabel(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
+	fmt.Println(context.FormValue("json"))
+
 	id, err := strconv.Atoi(context.Param("id"))
 	if err != nil {
 		return context.String(http.StatusBadRequest, "Bad route parameter")
@@ -116,14 +118,18 @@ func EditLabel(context echo.Context) error {
 		return context.String(http.StatusNotFound, "Label not found")
 	}
 
-	body := helpers.ReadBody(context.Request().Body)
+	body := context.FormValue("json")
 
 	var partialLabel database.PartialLabel
 
 	err = json.Unmarshal([]byte(body), &partialLabel)
 	if err != nil {
+		println(body, err.Error())
 		return context.String(http.StatusBadRequest, "Could not read JSON body")
 	}
+
+	// todo store to cdn, and ensure encryption
+	label.AvatarUrl = context.FormValue("avatar")
 
 	label.PartialLabel = partialLabel
 
