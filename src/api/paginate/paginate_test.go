@@ -14,14 +14,14 @@ func TestGetPaginationResults(t *testing.T) {
 	for i := 0; i < 13; i++ {
 		entry := database.Entry{
 			PartialEntry: database.PartialEntry{
-				Content: strconv.Itoa(i),
+				Content: "i love pagination",
 				Title:   "Entry " + strconv.Itoa(i),
 			},
 		}
 		_ = database.Insert(&entry)
 	}
 
-	pagination, err := GetPaginationResults("entries", 3, 2, database.GetDB())
+	pagination, err := GetPaginationResults("entries", 3, 2, database.GetDB().Where("content = ?", "i love pagination"))
 	assert.Nil(err)
 	assert.Equal((uint)(2), pagination.Page)
 	assert.Equal((uint)(3), pagination.Limit)

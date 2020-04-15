@@ -61,7 +61,6 @@ func GetPaginationResults(table string, limit uint, page uint, db *gorm.DB) (Pag
 		return Pagination{}, err
 	}
 	pagination.TotalPages = pagination.TotalMatches / limit
-	fmt.Println(pagination.TotalMatches, limit, pagination.TotalPages % limit)
 	if pagination.TotalPages % limit != 0 || limit > pagination.TotalMatches {
 		pagination.TotalPages++
 	}
