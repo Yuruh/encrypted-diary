@@ -23,7 +23,7 @@ type Pagination struct {
 func GetPaginationParams(defaultLimit int, context echo.Context) (limit int, page int, offset int, err error) {
 	limit = defaultLimit
 	offset = 0
-	page = 0
+	page = 1
 
 	if context.QueryParam("limit") != "" {
 		limit, err = strconv.Atoi(context.QueryParam("limit"))

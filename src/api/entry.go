@@ -62,9 +62,7 @@ func GetEntries(c echo.Context) error {
 		fmt.Println(err.Error())
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-
-
+	
 	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page), database.GetDB().Where("user_id = ?", user.ID))
 	if err != nil {
 		fmt.Println(err.Error())
