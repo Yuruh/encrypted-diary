@@ -18,11 +18,10 @@ To encrypt / decrypt journal entries: AES-256
 
 Only 2 routes should require password: login, and change-password (which has to rewrite all user journal entries)
 
-# Envisioned Features
+# Road map (both back and front)
 
-- Search by approximate title (https://www.postgresql.org/docs/9.1/fuzzystrmatch.html, fuzzy / approximate string matching)
-- Search by tag, with tag management (crud, name / color) and autocompletion in editors
-
+- Temporary login. Token no longer than 2 hour and set by client, and client should auto destroy encryption key when session expires.
+- Medias for each entry. Images for start. Should also be client-side encrypted. Use CDN (https://www.cloudflare.com/fr-fr/plans/, seems free)
 
 # Resources
 

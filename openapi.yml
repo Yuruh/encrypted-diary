@@ -1,7 +1,46 @@
 components:
-  parameters: {}
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      description: Number of items per page. Default to 5
+      schema:
+        type: integer
+    Page:
+      name: page
+      in: query
+      description: Current page. Starts at 1
+      schema:
+        type: integer
   responses: {}
   schemas:
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: number
+          example: 9
+        has_next_page:
+          type: boolean
+          example: true
+        has_prev_page:
+          type: boolean
+          example: true
+        page:
+          type: number
+          example: 3
+        next_page:
+          type: number
+          example: 4
+        prev_page:
+          type: number
+          example: 2
+        total_pages:
+          type: number
+          example: 210
+        total_matches:
+          type: number
+          example: 24
     User:
       type: object
       properties:
@@ -77,7 +116,6 @@ components:
         color:
           type: string
           format: hexcolor
-
   securitySchemes:
     Bearer Authentication:
       bearerFormat: JWT
@@ -168,6 +206,15 @@ paths:
         - Entries
       operationId: getEntries
       summary: Retrieve Entries
+      parameters:
+        - name: search
+          in: query
+          description: Search entry by title, label or date. Order by closest match.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Page"
+
       responses:
         200:
           description: List all user entries
@@ -179,6 +226,8 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Entry"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
     post:
       tags:
         - Entries
@@ -264,16 +313,8 @@ paths:
           description: Label name for auto-completion
           schema:
             type: string
-        - name: limit
-          in: query
-          description: Number of items per page. Default to 5
-          schema:
-            type: integer
-        - name: page
-          in: query
-          description: Current page. Starts at 1
-          schema:
-            type: integer
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Page"
     post:
       tags:
         - Labels

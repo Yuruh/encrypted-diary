@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/Yuruh/encrypted-diary/src/api/paginate"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/labstack/echo/v4"
 	asserthelper "github.com/stretchr/testify/assert"
@@ -16,6 +17,7 @@ import (
 
 type getEntriesResponse struct {
 	Entries []database.Entry `json:"entries"`
+	Pagination paginate.Pagination `json:"pagination"`
 }
 
 type getEntryResponse struct {
@@ -23,9 +25,7 @@ type getEntryResponse struct {
 }
 
 func TestGetEntry(t *testing.T) {
-	SetupUsers()
-	var user database.User
-	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
+	user, _ := SetupUsers()
 
 	//should be in setup code
 	entry := database.Entry{
@@ -81,6 +81,7 @@ func TestGetEntry(t *testing.T) {
 func TestGetEntries(t *testing.T) {
 	database.GetDB().Unscoped().Delete(database.Entry{})
 	SetupUsers()
+
 	var user database.User
 	database.GetDB().Where("email = ?", UserHasAccessEmail).First(&user)
 	var label database.Label = database.Label{
@@ -215,6 +216,18 @@ func caseLimitOk(t *testing.T) {
 	assert.Equal(3, len(response.Entries))
 
 	assert.Equal("Entry 7", response.Entries[2].Title)
+
+	// 13 entries are created, we request page 2 with limit 3
+	if assert.NotNil(response.Pagination) {
+		assert.Equal(uint(2), response.Pagination.Page)
+		assert.Equal(uint(3), response.Pagination.Limit)
+		assert.Equal(uint(3), response.Pagination.NextPage)
+		assert.Equal(uint(1), response.Pagination.PrevPage)
+		assert.Equal(uint(13), response.Pagination.TotalMatches)
+		assert.Equal(true, response.Pagination.HasNextPage)
+		assert.Equal(true, response.Pagination.HasPrevPage)
+		assert.Equal(uint(5), response.Pagination.TotalPages)
+	}
 }
 
 var validEntry = database.Entry{
