@@ -129,7 +129,16 @@ func EditLabel(context echo.Context) error {
 	}
 
 	// todo store to cdn, and ensure encryption
+	// should be form file
 	label.AvatarUrl = context.FormValue("avatar")
+
+//	avatar, err := context.FormFile("avatar")
+
+	/*
+		We have a problem.
+
+		If we use an external data store, we lose the ability to easily self host
+		*/
 
 	label.PartialLabel = partialLabel
 

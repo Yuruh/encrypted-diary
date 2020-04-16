@@ -44,6 +44,7 @@ func DeclareRoutes(app *echo.Echo) {
 	app.Use(middleware.Logger())
 	app.Use(middleware.Recover())
 	app.Use(middleware.CORS())
+	app.Use(middleware.BodyLimit("1G"))
 
 	app.POST("/login", Login, RequireBody)
 	app.POST("/register", Register, RequireBody)
@@ -65,7 +66,9 @@ func DeclareRoutes(app *echo.Echo) {
 
 	app.GET("/labels", GetLabels)
 	app.POST("/labels", AddLabel, RequireBody)
-	app.PUT("/labels/:id", EditLabel, RequireBody)
+
+	// todo test bodylimit middleware
+	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("2M"))
 	app.DELETE("/labels/:id", DeleteLabel)
 	
 }

@@ -14,6 +14,8 @@ services:
       - DIARY_DB_USER=test_user
       - DIARY_DB_PWD=test_pwd
       - ACCESS_TOKEN_SECRET=gfvbjhgyfgvhbnj
+    env_file:
+      - .env.test
     build: "."
     volumes:
       - ./src:/usr/src/diary/src
