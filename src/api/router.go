@@ -69,7 +69,7 @@ func DeclareRoutes(app *echo.Echo) {
 	app.POST("/labels", AddLabel, RequireBody)
 
 	// todo test bodylimit middleware
-	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("2M"))
+	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("6M"))
 	app.DELETE("/labels/:id", DeleteLabel)
 	
 }

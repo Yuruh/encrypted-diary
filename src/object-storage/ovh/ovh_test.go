@@ -8,17 +8,16 @@ import (
 	"time"
 )
 
-/*
-	Utility to generate ovh consumer key,
-func TestGetOvhConsumerKey(t *testing.T) {
+//	Utility to generate ovh consumer key,
+/*func TestGetOvhConsumerKey(t *testing.T) {
 	key, err := GetOvhConsumerKey()
-	if assert.Nil(t, err) {
-		assert.Equal(t, "12", key.ConsumerKey)
-		assert.Equal(t, "pending", key.State)
-		assert.Equal(t, "yolo", key.ValidationURL)
+	if asserthelper.Nil(t, err) {
+		asserthelper.Equal(t, "12", key.ConsumerKey)
+		asserthelper.Equal(t, "pending", key.State)
+		asserthelper.Equal(t, "yolo", key.ValidationURL)
 	}
-}
-*/
+}*/
+
 
 func TestUploadFileToPrivateObjectStorage(t *testing.T) {
 	assert := asserthelper.New(t)

@@ -3,6 +3,7 @@ package ovh
 import (
 	"errors"
 	"fmt"
+	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/ovh/go-ovh/ovh"
 	"io"
 	"net/http"
@@ -59,6 +60,8 @@ func UploadFileToPrivateObjectStorage(fileDescriptor string, file io.Reader) err
 
 	if res.StatusCode != http.StatusCreated {
 		// todo handle ovh errors
+		fmt.Println(res.StatusCode)
+		fmt.Println(helpers.ReadBody(res.Body))
 		return errors.New("unexpected status code")
 	}
 
@@ -86,8 +89,8 @@ func GetFileTemporaryAccess(fileDescriptor string, duration time.Duration) (Obje
 	return url, nil
 }
 
-/* Only needed to generate consumer key, commented for now
-func GetOvhConsumerKey() (*ovh.CkValidationState, error) {
+// Only needed to generate consumer key, commented for now
+/*func GetOvhConsumerKey() (*ovh.CkValidationState, error) {
 	fmt.Println("allo", os.Getenv("OVH_ENDPOINT"))
 	client, err := ovh.NewDefaultClient()
 	if err != nil {

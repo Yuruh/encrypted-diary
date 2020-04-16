@@ -6,6 +6,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/api/paginate"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
+	"github.com/Yuruh/encrypted-diary/src/object-storage/ovh"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -58,6 +59,27 @@ func GetEntries(c echo.Context) error {
 		Find(&entries).
 		Error
 
+	/*
+		TODO: optimize by:
+		1/ goroutine
+		2/ only one url per label ID
+
+	 */
+	// might retrieve several access for same label
+	for entryIdx, entry := range entries {
+		for idx, label := range  entry.Labels {
+			if label.HasAvatar {
+				access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+				if err != nil {
+					fmt.Println(err.Error())
+				} else {
+					entries[entryIdx].Labels[idx].AvatarUrl = access.URL
+				}
+			}
+		}
+	}
+
+
 	if err != nil {
 		fmt.Println(err.Error())
 		return c.NoContent(http.StatusInternalServerError)
@@ -109,6 +131,20 @@ func GetEntry(context echo.Context) error {
 	}
 
 	// todo refacto, or as an exercise, build this as a single data base request;
+
+
+	for idx, label := range  entry.Labels {
+		if label.HasAvatar {
+			access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+			if err != nil {
+				fmt.Println(err.Error())
+			} else {
+				entry.Labels[idx].AvatarUrl = access.URL
+			}
+		}
+	}
+
+
 
 	return context.JSON(http.StatusOK, ret)
 }
