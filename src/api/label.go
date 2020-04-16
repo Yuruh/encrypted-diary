@@ -50,8 +50,21 @@ func GetLabels(context echo.Context) error {
 		// We use levenshtein https://www.postgresql.org/docs/9.1/fuzzystrmatch.html
 		// Note: It seems to be case influenced, so we work on lowercase
 		Order(gorm.Expr("levenshtein(LOWER(?), SUBSTRING(LOWER(labels.name), 1, LENGTH(?))) ASC", name, name)).
-		//todo order by number of occurences ?
 		Find(&labels)
+
+
+	// todo goroutine
+	for idx, label := range labels {
+		if label.HasAvatar {
+			fmt.Println("attempting to retrieve ovh url")
+			access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+			if err != nil {
+				fmt.Println(err.Error())
+			} else {
+				labels[idx].AvatarUrl = access.URL
+			}
+		}
+	}
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})
 }
@@ -101,7 +114,7 @@ func AddLabel(context echo.Context) error {
 }
 
 func LabelAvatarFileDescriptor(label database.Label) string {
-	return "label_" + strconv.Itoa(int(label.ID))
+	return "label_" + strconv.Itoa(int(label.ID)) + "_avatar"
 }
 
 func EditLabel(context echo.Context) error {
@@ -149,6 +162,7 @@ func EditLabel(context echo.Context) error {
 			fmt.Println(err.Error())
 			return context.NoContent(http.StatusInternalServerError)
 		}
+		label.HasAvatar = true
 		label.AvatarUrl = url.URL
 	}
 

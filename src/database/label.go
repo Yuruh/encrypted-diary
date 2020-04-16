@@ -13,6 +13,7 @@ type Label struct {
 	PartialLabel
 	UserID uint `json:"user_id"`
 	AvatarUrl string `json:"avatar_url" gorm:"-"`
+	HasAvatar bool `json:"has_avatar"`
 //	Entries		[]Entry `json:"entries" gorm:"many2many:entry_labels;"`
 }
 
