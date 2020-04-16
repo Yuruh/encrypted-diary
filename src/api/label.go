@@ -6,6 +6,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/api/paginate"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
+	"github.com/Yuruh/encrypted-diary/src/object-storage/ovh"
 	"github.com/go-playground/validator/v10"
 	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo/v4"
@@ -49,8 +50,21 @@ func GetLabels(context echo.Context) error {
 		// We use levenshtein https://www.postgresql.org/docs/9.1/fuzzystrmatch.html
 		// Note: It seems to be case influenced, so we work on lowercase
 		Order(gorm.Expr("levenshtein(LOWER(?), SUBSTRING(LOWER(labels.name), 1, LENGTH(?))) ASC", name, name)).
-		//todo order by number of occurences ?
 		Find(&labels)
+
+
+	// todo goroutine
+	for idx, label := range labels {
+		if label.HasAvatar {
+			fmt.Println("attempting to retrieve ovh url")
+			access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+			if err != nil {
+				fmt.Println(err.Error())
+			} else {
+				labels[idx].AvatarUrl = access.URL
+			}
+		}
+	}
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})
 }
@@ -99,9 +113,16 @@ func AddLabel(context echo.Context) error {
 	return context.JSON(http.StatusCreated, map[string]interface{}{"label": label})
 }
 
+func LabelAvatarFileDescriptor(label database.Label) string {
+	return "label_" + strconv.Itoa(int(label.ID)) + "_avatar"
+}
 
 func EditLabel(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
+
+	fmt.Println(context.FormValue("json"))
+	fmt.Println(context.Request().ContentLength)
+	fmt.Println(context.Request().Header.Get("content-type"))
 
 	id, err := strconv.Atoi(context.Param("id"))
 	if err != nil {
@@ -116,16 +137,47 @@ func EditLabel(context echo.Context) error {
 		return context.String(http.StatusNotFound, "Label not found")
 	}
 
-	body := helpers.ReadBody(context.Request().Body)
+	form, _ := context.FormParams()
 
-	var partialLabel database.PartialLabel
-
-	err = json.Unmarshal([]byte(body), &partialLabel)
-	if err != nil {
-		return context.String(http.StatusBadRequest, "Could not read JSON body")
+	// avatar is not in forms, apparently because its a file
+	avatar, err := context.FormFile("avatar")
+	if err == nil {
+//		avatar, err := context.FormFile("avatar")
+/*		if err != nil {
+			fmt.Println(err.Error())
+			return context.String(http.StatusBadRequest, "Could not read avatar")
+		}*/
+		file, err := avatar.Open()
+		if err != nil {
+			fmt.Println(err.Error())
+			return context.String(http.StatusBadRequest, "Could not read avatar")
+		}
+		err = ovh.UploadFileToPrivateObjectStorage(LabelAvatarFileDescriptor(label), file)
+		if err != nil {
+			fmt.Println(err.Error())
+			return context.NoContent(http.StatusInternalServerError)
+		}
+		url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+		if err != nil {
+			fmt.Println(err.Error())
+			return context.NoContent(http.StatusInternalServerError)
+		}
+		label.HasAvatar = true
+		label.AvatarUrl = url.URL
 	}
 
-	label.PartialLabel = partialLabel
+	if form.Get("json") != "" {
+		body := context.FormValue("json")
+
+		var partialLabel database.PartialLabel
+
+		err = json.Unmarshal([]byte(body), &partialLabel)
+		if err != nil {
+			println(body, err.Error())
+			return context.String(http.StatusBadRequest, "Could not read JSON body")
+		}
+		label.PartialLabel = partialLabel
+	}
 
 	err = database.Update(&label)
 
