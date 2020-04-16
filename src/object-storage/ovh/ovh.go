@@ -19,6 +19,11 @@ type StorageAccess struct {
 	Token string `json:"token"`
 }
 
+type ObjectTempPublicUrl struct {
+	URL string `json:"getURL"`
+	ExpirationDate string `json:"expirationDate"`
+}
+
 func getStorageAccess() (StorageAccess, error) {
 	// Uses env variable for client configuration
 	client, err := ovh.NewDefaultClient()
@@ -53,7 +58,7 @@ func UploadFileToPrivateObjectStorage(fileDescriptor string, file io.Reader) err
 	}
 
 	if res.StatusCode != http.StatusCreated {
-		// todo handle
+		// todo handle ovh errors
 		return errors.New("unexpected status code")
 	}
 
@@ -61,8 +66,24 @@ func UploadFileToPrivateObjectStorage(fileDescriptor string, file io.Reader) err
 }
 
 // the duration could be computed from the time left in access token
-func GetFileTemporaryAccess(duration time.Duration) {
+func GetFileTemporaryAccess(fileDescriptor string, duration time.Duration) (ObjectTempPublicUrl, error) {
+	client, err := ovh.NewDefaultClient()
+	if err != nil {
+		return ObjectTempPublicUrl{}, err
+	}
 
+	var url ObjectTempPublicUrl
+
+	err = client.Post("/cloud/project/" + os.Getenv("OVH_SERVICE_NAME") + "/storage/" +
+		os.Getenv("OVH_CONTAINER_ID") + "/publicUrl", map[string]interface{}{
+		"expirationDate": time.Now().Add(duration).Format(time.RFC3339),
+		"objectName": fileDescriptor,
+		}, &url)
+
+	if err != nil {
+		return ObjectTempPublicUrl{}, err
+	}
+	return url, nil
 }
 
 /* Only needed to generate consumer key, commented for now

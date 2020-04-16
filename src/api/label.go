@@ -6,6 +6,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/api/paginate"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
+	"github.com/Yuruh/encrypted-diary/src/object-storage/ovh"
 	"github.com/go-playground/validator/v10"
 	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo/v4"
@@ -99,11 +100,16 @@ func AddLabel(context echo.Context) error {
 	return context.JSON(http.StatusCreated, map[string]interface{}{"label": label})
 }
 
+func LabelAvatarFileDescriptor(label database.Label) string {
+	return "label_" + strconv.Itoa(int(label.ID))
+}
 
 func EditLabel(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
 	fmt.Println(context.FormValue("json"))
+	fmt.Println(context.Request().ContentLength)
+	fmt.Println(context.Request().Header.Get("content-type"))
 
 	id, err := strconv.Atoi(context.Param("id"))
 	if err != nil {
@@ -118,29 +124,46 @@ func EditLabel(context echo.Context) error {
 		return context.String(http.StatusNotFound, "Label not found")
 	}
 
-	body := context.FormValue("json")
+	form, _ := context.FormParams()
 
-	var partialLabel database.PartialLabel
-
-	err = json.Unmarshal([]byte(body), &partialLabel)
-	if err != nil {
-		println(body, err.Error())
-		return context.String(http.StatusBadRequest, "Could not read JSON body")
+	// avatar is not in forms, apparently because its a file
+	avatar, err := context.FormFile("avatar")
+	if err == nil {
+//		avatar, err := context.FormFile("avatar")
+/*		if err != nil {
+			fmt.Println(err.Error())
+			return context.String(http.StatusBadRequest, "Could not read avatar")
+		}*/
+		file, err := avatar.Open()
+		if err != nil {
+			fmt.Println(err.Error())
+			return context.String(http.StatusBadRequest, "Could not read avatar")
+		}
+		err = ovh.UploadFileToPrivateObjectStorage(LabelAvatarFileDescriptor(label), file)
+		if err != nil {
+			fmt.Println(err.Error())
+			return context.NoContent(http.StatusInternalServerError)
+		}
+		url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+		if err != nil {
+			fmt.Println(err.Error())
+			return context.NoContent(http.StatusInternalServerError)
+		}
+		label.AvatarUrl = url.URL
 	}
 
-	// todo store to cdn, and ensure encryption
-	// should be form file
-	label.AvatarUrl = context.FormValue("avatar")
+	if form.Get("json") != "" {
+		body := context.FormValue("json")
 
-//	avatar, err := context.FormFile("avatar")
+		var partialLabel database.PartialLabel
 
-	/*
-		We have a problem.
-
-		If we use an external data store, we lose the ability to easily self host
-		*/
-
-	label.PartialLabel = partialLabel
+		err = json.Unmarshal([]byte(body), &partialLabel)
+		if err != nil {
+			println(body, err.Error())
+			return context.String(http.StatusBadRequest, "Could not read JSON body")
+		}
+		label.PartialLabel = partialLabel
+	}
 
 	err = database.Update(&label)
 

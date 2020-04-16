@@ -12,7 +12,7 @@ type Label struct {
 	BaseModel
 	PartialLabel
 	UserID uint `json:"user_id"`
-	AvatarUrl string `json:"avatar_url"`
+	AvatarUrl string `json:"avatar_url" gorm:"-"`
 //	Entries		[]Entry `json:"entries" gorm:"many2many:entry_labels;"`
 }
 

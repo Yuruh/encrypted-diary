@@ -113,7 +113,7 @@ func TestGetEntries(t *testing.T) {
 func caseNoLimit(t *testing.T) {
 	assert := asserthelper.New(t)
 
-	context, recorder := BuildEchoContext([]byte(""))
+	context, recorder := BuildEchoContext([]byte(""), echo.MIMEApplicationJSON)
 
 	err := GetEntries(context)
 	assert.Nil(err)

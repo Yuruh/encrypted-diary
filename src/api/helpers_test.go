@@ -34,7 +34,7 @@ func SetupUsers() (database.User, database.User) {
 	return user1, user2
 }
 
-func BuildEchoContext(body []byte) (echo.Context, *httptest.ResponseRecorder) {
+func BuildEchoContext(body []byte, contentType string) (echo.Context, *httptest.ResponseRecorder) {
 	e := echo.New()
 
 	/*
@@ -47,7 +47,7 @@ func BuildEchoContext(body []byte) (echo.Context, *httptest.ResponseRecorder) {
 	r.Add("PUT", "/entries/:id", func(ctx echo.Context) error {return nil})
 
 	request, _ := http.NewRequest("POST", "/entries", bytes.NewReader(body))
-	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	request.Header.Set(echo.HeaderContentType, contentType)
 	recorder := httptest.NewRecorder()
 	context := e.NewContext(request, recorder)
 	var user database.User

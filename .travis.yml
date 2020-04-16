@@ -17,18 +17,18 @@ before_install:
 - sudo mv docker-compose /usr/local/bin
 git:
   depth: 1
-script:
-- docker-compose -f docker-compose.test.yml build
-- docker-compose -f docker-compose.test.yml -p diary-tests up -d
-- docker exec -it diary-tests_diary-api_1 go test ./... -coverprofile=coverage.txt
-  -covermode=atomic
+#script:
+#- docker-compose -f docker-compose.test.yml build
+#- docker-compose -f docker-compose.test.yml -p diary-tests up -d
+#- docker exec -it diary-tests_diary-api_1 go test ./... -coverprofile=coverage.txt
+#  -covermode=atomic
 jobs:
   include:
   - stage: test
     script:
     - docker-compose -f docker-compose.test.yml build
     - docker-compose -f docker-compose.test.yml -p diary-tests up -d
-    - docker exec -it diary-tests_diary-api_1 go test ./... -race -coverprofile=coverage.txt
+    - docker exec -it diary-tests_diary-api_1 go test ./... -coverprofile=coverage.txt
       -covermode=atomic
     after_success:
     - bash <(curl -s https://codecov.io/bash)

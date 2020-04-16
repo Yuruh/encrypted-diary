@@ -1,12 +1,17 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
+	"github.com/labstack/echo/v4"
 	asserthelper "github.com/stretchr/testify/assert"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -21,7 +26,7 @@ func TestAddLabel(t *testing.T) {
 		Name:  "Work",
 		Color: "#ff00aa",
 	})
-	context, recorder := BuildEchoContext(marshall)
+	context, recorder := BuildEchoContext(marshall, echo.MIMEApplicationJSON)
 
 	fmt.Println("add label 1")
 	err := AddLabel(context)
@@ -53,7 +58,7 @@ func TestAddLabelAlreadyExists(t *testing.T) {
 		Name:  "Work",
 		Color: "#ff00aa",
 	})
-	context, recorder := BuildEchoContext(marshall)
+	context, recorder := BuildEchoContext(marshall, echo.MIMEApplicationJSON)
 
 	err := AddLabel(context)
 	assert.Nil(err)
@@ -67,7 +72,7 @@ func TestAddLabelBadFormat(t *testing.T) {
 		Name:  "Wor&k",
 		Color: "#ff00aa",
 	})
-	context, recorder := BuildEchoContext(marshall)
+	context, recorder := BuildEchoContext(marshall, echo.MIMEApplicationJSON)
 
 	err := AddLabel(context)
 	assert.Nil(err)
@@ -110,7 +115,7 @@ func TestGetLabelsWithExcluded(t *testing.T) {
 	database.GetDB().Create(&love)
 
 
-	context, recorder := BuildEchoContext([]byte(""))
+	context, recorder := BuildEchoContext([]byte(""), echo.MIMEApplicationJSON)
 	excluded := []uint{family.ID, work.ID}
 	marshalled, _ := json.Marshal(excluded)
 	context.QueryParams().Set("excluded_ids", string(marshalled))
@@ -149,7 +154,7 @@ func TestGetLabels(t *testing.T) {
 		UserID:       user1.ID,
 	})
 
-	context, recorder := BuildEchoContext([]byte(""))
+	context, recorder := BuildEchoContext([]byte(""), echo.MIMEApplicationJSON)
 	context.QueryParams().Set("name", "p")
 
 	err := GetLabels(context)
@@ -180,12 +185,22 @@ func TestEditLabel(t *testing.T) {
 		Name:  "Family",
 		Color: "#ff00aa",
 	})
-	context, recorder := BuildEchoContext(marshall)
+
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+	var fw io.Writer
+
+	fw, err := w.CreateFormField("json")
+
+	io.Copy(fw, strings.NewReader(string(marshall)))
+	w.Close()
+
+	context, recorder := BuildEchoContext(b.Bytes(), w.FormDataContentType())
 
 	context.SetParamNames("id")
 	context.SetParamValues(strconv.Itoa(int(label.ID)))
 
-	err := EditLabel(context)
+	err = EditLabel(context)
 	assert.Nil(err)
 	assert.Equal(http.StatusOK, recorder.Code)
 
@@ -211,7 +226,7 @@ func TestDeleteLabel(t *testing.T) {
 	}
 	database.GetDB().Create(&label)
 
-	context, recorder := BuildEchoContext([]byte(""))
+	context, recorder := BuildEchoContext([]byte(""), echo.MIMEApplicationJSON)
 
 	context.SetParamNames("id")
 	context.SetParamValues(strconv.Itoa(int(label.ID)))

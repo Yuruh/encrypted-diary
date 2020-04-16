@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"net/http"
 	"os"
+	"time"
 )
 
 func AuthMiddleware() echo.MiddlewareFunc {
@@ -71,6 +72,10 @@ func DeclareRoutes(app *echo.Echo) {
 	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("2M"))
 	app.DELETE("/labels/:id", DeleteLabel)
 	
+}
+
+func TokenToRemainingDuration() time.Duration {
+	return time.Hour * 1
 }
 
 func RunHttpServer()  {
