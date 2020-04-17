@@ -53,17 +53,31 @@ func GetLabels(context echo.Context) error {
 		Find(&labels)
 
 
-	// todo goroutine
-	for idx, label := range labels {
-		if label.HasAvatar {
-			fmt.Println("attempting to retrieve ovh url")
-			access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-			if err != nil {
-				fmt.Println(err.Error())
-			} else {
-				labels[idx].AvatarUrl = access.URL
-			}
+	// todo refacto
+	chUrl := make(chan Url)
+	chErr := make(chan error)
+	var results = 0
+	for labelIdx, label := range labels {
+		if label.HasAvatar == true {
+			results++
+			go func(lIdx int, label database.Label) {
+				url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+				if err != nil {
+					fmt.Println(err.Error())
+					chErr <- err
+				} else {
+					chUrl <- Url{
+						ObjectTempPublicUrl: url,
+						entryIdx:            -1,
+						labelIdx:            lIdx,
+					}
+				}
+			}(labelIdx, label)
 		}
+	}
+	for i := 0; i < results; i++ {
+		url := <-chUrl
+		labels[url.labelIdx].AvatarUrl = url.URL
 	}
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})

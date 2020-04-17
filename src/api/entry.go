@@ -37,6 +37,12 @@ import (
 	possibilité de cumuler les requetes par exemple  "Mars 2020;Games" --> sort en priorité les entrées qui contiennent le label Games pendant le mois de mars 2020
  */
 
+type Url struct {
+	ovh.ObjectTempPublicUrl
+	entryIdx int
+	labelIdx int
+}
+
 // For user queries: can include vs must include
 func GetEntries(c echo.Context) error {
 	var user database.User = c.Get("user").(database.User)
@@ -61,22 +67,51 @@ func GetEntries(c echo.Context) error {
 
 	/*
 		TODO: optimize by:
-		1/ goroutine
-		2/ only one url per label ID
+		1/ goroutine  // done, somewhat
+		2/ request only one url per label ID // small optimization
 
 	 */
 	// might retrieve several access for same label
+
+	type Url struct {
+		ovh.ObjectTempPublicUrl
+		entryIdx int
+		labelIdx int
+	}
+	/*
+		Okay, this works
+		Two problems:
+			We don't handle errors, at all (it might even crash on error)
+			It seems very ugly
+
+			To handle error, use something like this pattern ? https://play.golang.org/p/1a0ZXuy3Dz
+	 */
+	chUrl := make(chan Url)
+	chErr := make(chan error)
+	var results = 0
 	for entryIdx, entry := range entries {
-		for idx, label := range  entry.Labels {
-			if label.HasAvatar {
-				access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-				if err != nil {
-					fmt.Println(err.Error())
-				} else {
-					entries[entryIdx].Labels[idx].AvatarUrl = access.URL
-				}
+		for labelIdx, label := range  entry.Labels {
+			if label.HasAvatar == true {
+				results++
+				go func(eIdx int, lIdx int, label database.Label) {
+					url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+					if err != nil {
+						fmt.Println(err.Error())
+						chErr <- err
+					} else {
+						chUrl <- Url{
+							ObjectTempPublicUrl: url,
+							entryIdx:            eIdx,
+							labelIdx:            lIdx,
+						}
+					}
+				}(entryIdx, labelIdx, label)
 			}
 		}
+	}
+	for i := 0; i < results; i++ {
+		url := <-chUrl
+		entries[url.entryIdx].Labels[url.labelIdx].AvatarUrl = url.URL
 	}
 
 
@@ -129,11 +164,37 @@ func GetEntry(context echo.Context) error {
 	if !result.RecordNotFound() {
 		ret["prev_entry_id"] = prevEntry.ID
 	}
-
 	// todo refacto, or as an exercise, build this as a single data base request;
 
 
-	for idx, label := range  entry.Labels {
+	// todo also refacto this, its a C/C of get multiple entries
+	chUrl := make(chan Url)
+	chErr := make(chan error)
+	var results = 0
+		for labelIdx, label := range entry.Labels {
+			if label.HasAvatar == true {
+				results++
+				go func(lIdx int, label database.Label) {
+					url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+					if err != nil {
+						fmt.Println(err.Error())
+						chErr <- err
+					} else {
+						chUrl <- Url{
+							ObjectTempPublicUrl: url,
+							entryIdx:            -1,
+							labelIdx:            lIdx,
+						}
+					}
+				}(labelIdx, label)
+			}
+		}
+	for i := 0; i < results; i++ {
+		url := <-chUrl
+		entry.Labels[url.labelIdx].AvatarUrl = url.URL
+	}
+
+/*	for idx, label := range  entry.Labels {
 		if label.HasAvatar {
 			access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
 			if err != nil {
@@ -142,7 +203,7 @@ func GetEntry(context echo.Context) error {
 				entry.Labels[idx].AvatarUrl = access.URL
 			}
 		}
-	}
+	}*/
 
 
 
