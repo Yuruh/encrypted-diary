@@ -131,7 +131,7 @@ info:
   version: 0.2.0
   x-logo:
     altText: Logo
-    url: https://us.123rf.com/450wm/bessyana/bessyana1911/bessyana191100018/137324124-black-and-white-locked-diary-girl-secret-journal-fairy-tale-theme-vector-illustration-for-icon-stamp.jpg?ver=6
+    url: https://app.diary.yuruh.fr/logo512.png
 openapi: 3.0.0
 paths:
   /login:
@@ -147,12 +147,21 @@ paths:
         content:
           application/json:
             schema:
+              required:
+                - email
+                - password
               properties:
                 email:
                   type: string
                   format: "email"
                 password:
                   type: string
+                  example: j0@EFA6jr6RDY
+                session_duration_ms:
+                  type: string
+                  format: number
+                  default: 1800000
+                  description: Duration in milliseconds before token expires. Default 30 minutes. Maximum 1 hour.
       responses:
         200:
           description: Success

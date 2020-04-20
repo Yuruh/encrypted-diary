@@ -20,12 +20,16 @@ import (
 type LoginBody struct {
 	Email string `json:"email"`
 	Password string `json:"password" validate:"min=9"`
+	SessionDurationMs time.Duration `json:"session_duration_ms"`
 }
 /*
 "^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
 
 Can be used client side to validate password
  */
+
+const maxTokenDuration = time.Minute * 30
+
 func Login(context echo.Context) error {
 	body, err := ioutil.ReadAll(context.Request().Body)
 	if err != nil {
@@ -38,12 +42,19 @@ func Login(context echo.Context) error {
 	if err != nil {
 		return context.NoContent(http.StatusBadRequest)
 	}
+	// so we can use GO's time.Duration, as nanoseconds
+	parsedBody.SessionDurationMs = parsedBody.SessionDurationMs * time.Millisecond
+
+	if parsedBody.SessionDurationMs > maxTokenDuration {
+		parsedBody.SessionDurationMs = maxTokenDuration
+	}
 
 	var user database.User
 	database.GetDB().Where("email = ?", parsedBody.Email).First(&user)
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parsedBody.Password))
 
+	fmt.Println(time.Now().Unix() + int64(parsedBody.SessionDurationMs / time.Second))
 	if err != nil {
 		return context.String(http.StatusNotFound, "User not found")
 	} else {
@@ -51,10 +62,13 @@ func Login(context echo.Context) error {
 		claims := &TokenClaims{
 			user,
 			jwt.StandardClaims{
-				ExpiresAt: time.Now().Unix() + int64(time.Hour * 24),
+				ExpiresAt: time.Now().Unix() + int64(parsedBody.SessionDurationMs / time.Second),
+				IssuedAt: time.Now().Unix(),
+				Issuer: "auth.yuruh.fr", // This would make sense if auth server was external
+				Audience: "api.diary.yuruh.fr",
 			},
 		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 		ss, _ := token.SignedString([]byte(os.Getenv("ACCESS_TOKEN_SECRET")))
 
 		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "user": user})

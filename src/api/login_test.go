@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/Yuruh/encrypted-diary/src/database"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
+	asserthelper "github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestLogin(t *testing.T) {
@@ -24,8 +27,13 @@ func TestLogin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+
 	t.Run("User not found", caseUserNotFound)
 	t.Run("User found", caseUserFound)
+	t.Run("User found", caseRequireMoreThan1hours)
+	t.Run("User found", caseRequire30Min)
+
+
 	db := database.GetDB().Delete(&user)
 	if db.Error != nil {
 		t.Fatal(db.Error.Error())
@@ -54,6 +62,75 @@ func caseUserNotFound(t *testing.T) {
 	}
 	if recorder.Code != http.StatusNotFound {
 		t.Errorf("Bad status, expected %v, got %v", http.StatusNotFound, recorder.Code)
+	}
+}
+
+func caseRequireMoreThan1hours(t* testing.T) {
+	assert := asserthelper.New(t)
+
+	user := LoginBody{
+		Email:     "does@exists.fr",
+		Password:  "password",
+		SessionDurationMs: 7200000, // 2 hours
+	}
+	marshalled, _ := json.Marshal(user)
+	context, recorder := BuildEchoContext(marshalled, echo.MIMEApplicationJSON)
+
+	err := Login(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, recorder.Code)
+
+	var response loginResponse
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+	if len(response.Token) < 300 {
+		t.Errorf("Token length incorrect, expected at least %v, got %v", 300, len(response.Token))
+	}
+	// decode JWT token without verifying the signature
+	if token, _ := jwt.Parse(response.Token, nil); token != nil {
+		// Assert that it expires after now
+		assert.Equal(true, token.Claims.(jwt.MapClaims).VerifyExpiresAt(time.Now().Unix(), true))
+		// Assert that it expires before 1h
+		assert.Equal(false, token.Claims.(jwt.MapClaims).VerifyExpiresAt(int64(float64(time.Now().Unix()) + (float64(time.Hour) * 1.1 / float64(time.Second))), true))
+	} else {
+		t.Errorf("Could not decde JWT token")
+	}
+}
+
+func caseRequire30Min(t* testing.T) {
+	assert := asserthelper.New(t)
+
+	user := LoginBody{
+		Email:     "does@exists.fr",
+		Password:  "password",
+		SessionDurationMs: 7200000 / 4, // 30 minutes
+	}
+	marshalled, _ := json.Marshal(user)
+	context, recorder := BuildEchoContext(marshalled, echo.MIMEApplicationJSON)
+
+	err := Login(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, recorder.Code)
+
+	var response loginResponse
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+	if len(response.Token) < 300 {
+		t.Errorf("Token length incorrect, expected at least %v, got %v", 300, len(response.Token))
+	}
+	// decode JWT token without verifying the signature
+	if token, _ := jwt.Parse(response.Token, nil); token != nil {
+		// Assert that it expires after now
+		assert.Equal(true, token.Claims.(jwt.MapClaims).VerifyExpiresAt(time.Now().Unix(), true))
+		// Assert that it expires before a bit more than 30 min
+		assert.Equal(true, token.Claims.(jwt.MapClaims).VerifyExpiresAt(int64(float64(time.Now().Unix()) + (float64(time.Hour) * 0.2 / float64(time.Second))), true))
+
+		// Assert that it expires before a bit more than 30 min
+		assert.Equal(false, token.Claims.(jwt.MapClaims).VerifyExpiresAt(int64(float64(time.Now().Unix()) + (float64(time.Hour) * 0.6 / float64(time.Second))), true))
+	} else {
+		t.Errorf("Could not decde JWT token")
 	}
 }
 

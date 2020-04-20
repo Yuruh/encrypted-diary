@@ -38,7 +38,7 @@ services:
     image: "redocly/redoc"
     environment:
       - PAGE_TITLE=API Doc - Encrypted Diary
-      #- PAGE_FAVICON=<url>
+      - PAGE_FAVICON=https://app.diary.yuruh.fr/favicon.ico
       - SPEC_URL=http://localhost:8080/openapi.yml
     ports:
       - "8082:80"
