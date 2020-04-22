@@ -2,10 +2,12 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/api"
 	"github.com/Yuruh/encrypted-diary/src/database"
+	"github.com/getsentry/sentry-go"
+	"log"
 	"os"
+	"time"
 )
 
 func ensureEnvSet() error {
@@ -26,9 +28,20 @@ func ensureEnvSet() error {
 func main() {
 	err := ensureEnvSet()
 	if err != nil {
-		fmt.Println(err.Error())
+		sentry.CaptureException(err)
 		os.Exit(1)
 	}
+	err = sentry.Init(sentry.ClientOptions{})
+	if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}
+	// Flush buffered events before the program terminates.
+	defer sentry.Flush(2 * time.Second)
+
+/*	eventId := sentry.CaptureMessage("It works!")
+	log.Println("Sentry event id", *eventId)
+	eventId = sentry.CaptureException(errors.New("sentry test error"))
+	log.Println("Sentry error event id", *eventId)*/
 
 	defer database.GetDB().Close()
 

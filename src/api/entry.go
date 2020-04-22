@@ -7,6 +7,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/Yuruh/encrypted-diary/src/object-storage/ovh"
+	"github.com/getsentry/sentry-go"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -48,7 +49,6 @@ func GetEntries(c echo.Context) error {
 	var user database.User = c.Get("user").(database.User)
 
 	limit, page, offset, err := paginate.GetPaginationParams(10, c)
-	fmt.Println(page)
 
 	if err != nil {
 		return c.String(http.StatusBadRequest, "Bad query parameters")
@@ -96,7 +96,7 @@ func GetEntries(c echo.Context) error {
 				go func(eIdx int, lIdx int, label database.Label) {
 					url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
 					if err != nil {
-						fmt.Println(err.Error())
+						sentry.CaptureException(err)
 						chErr <- err
 					} else {
 						chUrl <- Url{
@@ -116,13 +116,13 @@ func GetEntries(c echo.Context) error {
 
 
 	if err != nil {
-		fmt.Println(err.Error())
+		sentry.CaptureException(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	
 	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page), database.GetDB().Where("user_id = ?", user.ID))
 	if err != nil {
-		fmt.Println(err.Error())
+		sentry.CaptureException(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -177,7 +177,7 @@ func GetEntry(context echo.Context) error {
 				go func(lIdx int, label database.Label) {
 					url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
 					if err != nil {
-						fmt.Println(err.Error())
+						sentry.CaptureException(err)
 						chErr <- err
 					} else {
 						chUrl <- Url{
@@ -198,7 +198,7 @@ func GetEntry(context echo.Context) error {
 		if label.HasAvatar {
 			access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
 			if err != nil {
-				fmt.Println(err.Error())
+				sentry.CaptureException(err)
 			} else {
 				entry.Labels[idx].AvatarUrl = access.URL
 			}
@@ -228,7 +228,7 @@ func AddEntry(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		fmt.Println(err.Error())
+		sentry.CaptureException(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
@@ -299,7 +299,7 @@ func EditEntry(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		fmt.Println(err.Error())
+		sentry.CaptureException(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 

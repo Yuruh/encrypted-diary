@@ -7,6 +7,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/Yuruh/encrypted-diary/src/object-storage/ovh"
+	"github.com/getsentry/sentry-go"
 	"github.com/go-playground/validator/v10"
 	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo/v4"
@@ -63,7 +64,7 @@ func GetLabels(context echo.Context) error {
 			go func(lIdx int, label database.Label) {
 				url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
 				if err != nil {
-					fmt.Println(err.Error())
+					sentry.CaptureException(err)
 					chErr <- err
 				} else {
 					chUrl <- Url{
@@ -120,7 +121,7 @@ func AddLabel(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		fmt.Println(err.Error())
+		sentry.CaptureException(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
@@ -158,22 +159,22 @@ func EditLabel(context echo.Context) error {
 	if err == nil {
 //		avatar, err := context.FormFile("avatar")
 /*		if err != nil {
-			fmt.Println(err.Error())
+			sentry.CaptureException(err)
 			return context.String(http.StatusBadRequest, "Could not read avatar")
 		}*/
 		file, err := avatar.Open()
 		if err != nil {
-			fmt.Println(err.Error())
+			sentry.CaptureException(err)
 			return context.String(http.StatusBadRequest, "Could not read avatar")
 		}
 		err = ovh.UploadFileToPrivateObjectStorage(LabelAvatarFileDescriptor(label), file)
 		if err != nil {
-			fmt.Println(err.Error())
+			sentry.CaptureException(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
 		url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
 		if err != nil {
-			fmt.Println(err.Error())
+			sentry.CaptureException(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
 		label.HasAvatar = true
@@ -199,7 +200,7 @@ func EditLabel(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		fmt.Println(err.Error())
+		sentry.CaptureException(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
