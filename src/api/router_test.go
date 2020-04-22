@@ -192,3 +192,18 @@ func TestDeclareRoutes(t *testing.T) {
 	DeclareRoutes(e)
 	assert.Equal(13, len(e.Routes()))
 }
+
+func TestRecoverMiddleware(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	funcRecover := RecoverMiddleware()(echo.HandlerFunc(func(c echo.Context) error {
+		panic("test")
+	}))
+
+	err := funcRecover(c)
+	asserthelper.Nil(t, err)
+	asserthelper.Equal(t, http.StatusInternalServerError, rec.Code)
+}
