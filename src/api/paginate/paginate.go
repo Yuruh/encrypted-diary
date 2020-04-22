@@ -2,7 +2,7 @@ package paginate
 
 import (
 	"errors"
-	"fmt"
+	"github.com/getsentry/sentry-go"
 	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo/v4"
 	"strconv"
@@ -57,7 +57,7 @@ func GetPaginationResults(table string, limit uint, page uint, db *gorm.DB) (Pag
 	// Gets total matches
 	err := db.Select("COUNT(*) as total_matches").Table(table).Scan(&pagination).Error
 	if err != nil {
-		fmt.Println(err.Error())
+		sentry.CaptureException(err)
 		return Pagination{}, err
 	}
 	pagination.TotalPages = pagination.TotalMatches / limit

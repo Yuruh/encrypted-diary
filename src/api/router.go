@@ -1,13 +1,16 @@
 package api
 
 import (
+	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -31,6 +34,34 @@ func AuthMiddleware() echo.MiddlewareFunc {
 	})
 }
 
+// Middleware to recover from panic and send infos to sentry
+
+func RecoverMiddleware() echo.MiddlewareFunc {
+	// Defaults
+	config := middleware.DefaultRecoverConfig
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			defer func() {
+				if r := recover(); r != nil {
+					hub := sentry.CurrentHub()
+					hub.Recover(r)
+					err, ok := r.(error)
+					if !ok {
+						err = fmt.Errorf("%v", r)
+					}
+					stack := make([]byte, config.StackSize)
+					length := runtime.Stack(stack, !config.DisableStackAll)
+					if !config.DisablePrintStack {
+						c.Logger().Printf("[PANIC RECOVER] %v %s\n", err, stack[:length])
+					}
+					c.Error(err)
+				}
+			}()
+			return next(c)
+		}
+	}
+}
+
 func RequireBody(next echo.HandlerFunc) echo.HandlerFunc {
 	return func (c echo.Context) error {
 		if c.Request().Body == nil {
@@ -42,8 +73,8 @@ func RequireBody(next echo.HandlerFunc) echo.HandlerFunc {
 
 func DeclareRoutes(app *echo.Echo) {
 	// Middleware
+	app.Use(RecoverMiddleware())
 	app.Use(middleware.Logger())
-	app.Use(middleware.Recover())
 	app.Use(middleware.CORS())
 	app.Use(middleware.BodyLimit("1G"))
 

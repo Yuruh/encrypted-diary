@@ -18,11 +18,21 @@ To encrypt / decrypt journal entries: AES-256
 
 Only 2 routes should require password: login, and change-password (which has to rewrite all user journal entries)
 
-# Road map (both back and front)
+# Road map
+
+## Security
 
 - Temporary login. Token no longer than 2 hour and set by client, and client should auto destroy encryption key when session expires.
-- Medias for each entry. Images for start. Should also be client-side encrypted. Use CDN (https://www.cloudflare.com/fr-fr/plans/, seems free)
+- 2FA https://github.com/dgryski/dgoogauth
+- External auth server that implements OAuth2 (https://pragmaticwebsecurity.com/files/cheatsheets/oauth2securityfordevelopers.pdf)
+https://github.com/ory/hydra
 
+## App Features
+
+- Medias for each entry. Images for start. Should also be client-side encrypted. Use CDN (https://www.cloudflare.com/fr-fr/plans/, seems free)
+        --> Done with labels avatars, but i'm not sure i can use a CDN with client side  encryption 
+
+- Entry search
 # Resources
 
 https://core.telegram.org/techfaq#q-how-does-end-to-end-encryption-work-in-mtproto
