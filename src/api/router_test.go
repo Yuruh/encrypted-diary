@@ -165,7 +165,7 @@ func caseValidToken(t *testing.T) {
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	ss, _ := token.SignedString([]byte(os.Getenv("ACCESS_TOKEN_SECRET")))
 
 	e := echo.New()

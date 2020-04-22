@@ -20,7 +20,7 @@ func AuthMiddleware() echo.MiddlewareFunc {
 	return middleware.JWTWithConfig(middleware.JWTConfig{
 		Claims: &TokenClaims{},
 		SigningKey: []byte(os.Getenv("ACCESS_TOKEN_SECRET")),
-		SigningMethod: "HS256",
+		SigningMethod: "HS512",
 		ContextKey: "token",
 		Skipper: func(context echo.Context) bool {
 			if helpers.ContainsString(unprotectedPaths[:], context.Path()) {
@@ -100,7 +100,7 @@ func DeclareRoutes(app *echo.Echo) {
 	app.POST("/labels", AddLabel, RequireBody)
 
 	// todo test bodylimit middleware
-	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("6M"))
+	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("150K"))
 	app.DELETE("/labels/:id", DeleteLabel)
 	
 }
