@@ -99,12 +99,12 @@ func DeclareRoutes(app *echo.Echo) {
 	app.GET("/labels", GetLabels)
 	app.POST("/labels", AddLabel, RequireBody)
 
-	// todo test bodylimit middleware
 	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("150K"))
 	app.DELETE("/labels/:id", DeleteLabel)
 	
 }
 
+// TODO
 func TokenToRemainingDuration() time.Duration {
 	return time.Hour * 1
 }
