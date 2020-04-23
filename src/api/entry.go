@@ -71,42 +71,27 @@ func GetEntries(c echo.Context) error {
 		sentry.CaptureException(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	/*
-		Could be optimized by requesting only one url per label ID
-	 */
 
-	type Url struct {
-		ovh.ObjectTempPublicUrl
-		entryIdx int
-		labelIdx int
-		error
+	type Data struct {
+		labels []database.Label
+		idx int
 	}
-
-	// todo refacto, this is C/C in label.go
-	chUrl := make(chan Url)
 	var results = 0
+	ch := make(chan Data)
+
 	for entryIdx, entry := range entries {
-		for labelIdx, label := range  entry.Labels {
-			if label.HasAvatar == true {
-				results++
-				go func(eIdx int, lIdx int, label database.Label) {
-					url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-					chUrl <- Url{
-						ObjectTempPublicUrl: url,
-						entryIdx:            eIdx,
-						labelIdx:            lIdx,
-						error: 				 err,
-					}
-				}(entryIdx, labelIdx, label)
+		results++
+		go func(idx int, labels []database.Label) {
+			ch <- Data{
+				labels: PopulateLabelsUrls(labels),
+				idx: idx,
 			}
-		}
+
+		}(entryIdx, entry.Labels)
 	}
 	for i := 0; i < results; i++ {
-		url := <-chUrl
-		if url.error != nil {
-			sentry.CaptureException(err)
-		}
-		entries[url.entryIdx].Labels[url.labelIdx].AvatarUrl = url.URL
+		data := <-ch
+		entries[data.idx].Labels = data.labels
 	}
 	
 	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page), database.GetDB().Where("user_id = ?", user.ID))

@@ -16,6 +16,33 @@ import (
 	"strings"
 )
 
+func PopulateLabelsUrls(labels []database.Label) []database.Label {
+	chUrl := make(chan Url)
+	var results = 0
+	for labelIdx, label := range labels {
+		if label.HasAvatar == true {
+			results++
+			go func(lIdx int, label database.Label) {
+				url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+				chUrl <- Url{
+					ObjectTempPublicUrl: url,
+					entryIdx:            -1,
+					labelIdx:            lIdx,
+					error: err,
+				}
+			}(labelIdx, label)
+		}
+	}
+	for i := 0; i < results; i++ {
+		url := <-chUrl
+		if url.error != nil {
+			sentry.CaptureException(url.error)
+		}
+		labels[url.labelIdx].AvatarUrl = url.URL
+	}
+	return labels
+}
+
 func GetLabels(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
@@ -54,30 +81,7 @@ func GetLabels(context echo.Context) error {
 		Find(&labels)
 
 
-	// todo refacto
-	chUrl := make(chan Url)
-	var results = 0
-	for labelIdx, label := range labels {
-		if label.HasAvatar == true {
-			results++
-			go func(lIdx int, label database.Label) {
-				url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-				chUrl <- Url{
-					ObjectTempPublicUrl: url,
-					entryIdx:            -1,
-					labelIdx:            lIdx,
-					error: err,
-				}
-			}(labelIdx, label)
-		}
-	}
-	for i := 0; i < results; i++ {
-		url := <-chUrl
-		if url.error != nil {
-			sentry.CaptureException(err)
-		}
-		labels[url.labelIdx].AvatarUrl = url.URL
-	}
+	labels = PopulateLabelsUrls(labels)
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"labels": labels})
 }
