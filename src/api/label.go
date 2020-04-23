@@ -56,28 +56,26 @@ func GetLabels(context echo.Context) error {
 
 	// todo refacto
 	chUrl := make(chan Url)
-	chErr := make(chan error)
 	var results = 0
 	for labelIdx, label := range labels {
 		if label.HasAvatar == true {
 			results++
 			go func(lIdx int, label database.Label) {
 				url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-				if err != nil {
-					sentry.CaptureException(err)
-					chErr <- err
-				} else {
-					chUrl <- Url{
-						ObjectTempPublicUrl: url,
-						entryIdx:            -1,
-						labelIdx:            lIdx,
-					}
+				chUrl <- Url{
+					ObjectTempPublicUrl: url,
+					entryIdx:            -1,
+					labelIdx:            lIdx,
+					error: err,
 				}
 			}(labelIdx, label)
 		}
 	}
 	for i := 0; i < results; i++ {
 		url := <-chUrl
+		if url.error != nil {
+			sentry.CaptureException(err)
+		}
 		labels[url.labelIdx].AvatarUrl = url.URL
 	}
 

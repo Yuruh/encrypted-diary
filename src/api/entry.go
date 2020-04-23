@@ -42,6 +42,7 @@ type Url struct {
 	ovh.ObjectTempPublicUrl
 	entryIdx int
 	labelIdx int
+	error
 }
 
 // For user queries: can include vs must include
@@ -65,29 +66,24 @@ func GetEntries(c echo.Context) error {
 		Find(&entries).
 		Error
 
-	/*
-		TODO: optimize by:
-		1/ goroutine  // done, somewhat
-		2/ request only one url per label ID // small optimization
 
+	if err != nil {
+		sentry.CaptureException(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	/*
+		Could be optimized by requesting only one url per label ID
 	 */
-	// might retrieve several access for same label
 
 	type Url struct {
 		ovh.ObjectTempPublicUrl
 		entryIdx int
 		labelIdx int
+		error
 	}
-	/*
-		Okay, this works
-		Two problems:
-			We don't handle errors, at all (it might even crash on error)
-			It seems very ugly
 
-			To handle error, use something like this pattern ? https://play.golang.org/p/1a0ZXuy3Dz
-	 */
+	// todo refacto, this is C/C in label.go
 	chUrl := make(chan Url)
-	chErr := make(chan error)
 	var results = 0
 	for entryIdx, entry := range entries {
 		for labelIdx, label := range  entry.Labels {
@@ -95,15 +91,11 @@ func GetEntries(c echo.Context) error {
 				results++
 				go func(eIdx int, lIdx int, label database.Label) {
 					url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-					if err != nil {
-						sentry.CaptureException(err)
-						chErr <- err
-					} else {
-						chUrl <- Url{
-							ObjectTempPublicUrl: url,
-							entryIdx:            eIdx,
-							labelIdx:            lIdx,
-						}
+					chUrl <- Url{
+						ObjectTempPublicUrl: url,
+						entryIdx:            eIdx,
+						labelIdx:            lIdx,
+						error: 				 err,
 					}
 				}(entryIdx, labelIdx, label)
 			}
@@ -111,13 +103,10 @@ func GetEntries(c echo.Context) error {
 	}
 	for i := 0; i < results; i++ {
 		url := <-chUrl
+		if url.error != nil {
+			sentry.CaptureException(err)
+		}
 		entries[url.entryIdx].Labels[url.labelIdx].AvatarUrl = url.URL
-	}
-
-
-	if err != nil {
-		sentry.CaptureException(err)
-		return c.NoContent(http.StatusInternalServerError)
 	}
 	
 	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page), database.GetDB().Where("user_id = ?", user.ID))

@@ -28,7 +28,8 @@ type LoginBody struct {
 Can be used client side to validate password
  */
 
-const maxTokenDuration = time.Minute * 30
+const maxTokenDuration = time.Hour * 1
+const defaultTokenDuration = time.Minute * 30
 
 func Login(context echo.Context) error {
 	body, err := ioutil.ReadAll(context.Request().Body)
@@ -43,7 +44,11 @@ func Login(context echo.Context) error {
 		return context.NoContent(http.StatusBadRequest)
 	}
 	// so we can use GO's time.Duration, as nanoseconds
-	parsedBody.SessionDurationMs = parsedBody.SessionDurationMs * time.Millisecond
+	if parsedBody.SessionDurationMs != 0 {
+		parsedBody.SessionDurationMs = parsedBody.SessionDurationMs * time.Millisecond
+	} else {
+		parsedBody.SessionDurationMs = defaultTokenDuration
+	}
 
 	if parsedBody.SessionDurationMs > maxTokenDuration {
 		parsedBody.SessionDurationMs = maxTokenDuration
