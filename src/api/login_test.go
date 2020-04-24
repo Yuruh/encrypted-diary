@@ -295,3 +295,17 @@ func caseUserCreated(t *testing.T) {
 		t.Errorf("Bad status, expected %v, got %v (%v)", http.StatusCreated, recorder.Code, recorder.Body.String())
 	}
 }
+
+func TestRequestGoogleAuthenticatorQRCode(t *testing.T) {
+	assert := asserthelper.New(t)
+	user, _ := SetupUsers()
+	context, recorder := BuildEchoContext(nil, echo.MIMEApplicationJSON)
+
+	context.Set("user", user)
+
+	err := RequestGoogleAuthenticatorQRCode(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, recorder.Code)
+	assert.Equal("image/png", recorder.Header().Get("content-type"))
+	assert.Equal(956, len(recorder.Body.Bytes()))
+}

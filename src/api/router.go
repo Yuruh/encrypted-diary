@@ -98,10 +98,11 @@ func DeclareRoutes(app *echo.Echo) {
 
 	app.GET("/labels", GetLabels)
 	app.POST("/labels", AddLabel, RequireBody)
-
 	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("150K"))
 	app.DELETE("/labels/:id", DeleteLabel)
-	
+
+	app.GET("/auth/google-authenticator", RequestGoogleAuthenticatorQRCode)
+	app.POST("/auth/google-authenticator", ValidateGoogleAuthCode)
 }
 
 // TODO

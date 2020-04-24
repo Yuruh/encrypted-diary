@@ -3,8 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Yuruh/encrypted-diary/src/authentication"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/getsentry/sentry-go"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -146,3 +149,57 @@ func Register(context echo.Context) error {
 	}
 	return context.JSON(http.StatusCreated, map[string]interface{}{"user": user})
 }
+
+func RequestGoogleAuthenticatorQRCode(context echo.Context) error {
+	var user database.User = context.Get("user").(database.User)
+
+	uri := authentication.BuildGAuthURI(user.Email)
+	png, err := authentication.GenerateQRCodeFromURI(uri)
+	if err != nil {
+		sentry.CaptureException(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	return context.Blob(http.StatusOK, "image/png", png)
+}
+
+// Return HTTP 500 and log error to sentry
+func InternalError(context echo.Context, err error) error {
+	sentry.CaptureException(err)
+	fmt.Println("INTERNAL ERROR:", err.Error())
+	return context.NoContent(http.StatusInternalServerError)
+
+}
+
+func ValidateGoogleAuthCode(context echo.Context) error {
+	type Body struct {
+		Token string `json:"token" validate:"required,len=6,numeric"`
+	}
+
+	body, err := ioutil.ReadAll(context.Request().Body)
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	var parsedBody Body
+	err = json.Unmarshal(body, &parsedBody)
+	if err != nil {
+
+		return context.String(http.StatusBadRequest, "Bad Body")
+	}
+
+	validate := validator.New()
+
+	err = validate.Struct(&parsedBody)
+	if err, ok := err.(validator.ValidationErrors); ok {
+		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
+	}
+
+	valid, err := authentication.Authorize(parsedBody.Token)
+	if err != nil {
+		return InternalError(context, err)
+	}
+	if valid {
+		return context.NoContent(http.StatusOK)
+	} else {
+		return context.String(http.StatusBadRequest, "Code refused")
+	}}

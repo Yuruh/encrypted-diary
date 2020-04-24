@@ -68,7 +68,6 @@ func UploadFileToPrivateObjectStorage(fileDescriptor string, file io.Reader) err
 	return nil
 }
 
-// the duration could be computed from the time left in access token
 func GetFileTemporaryAccess(fileDescriptor string, duration time.Duration) (ObjectTempPublicUrl, error) {
 	client, err := ovh.NewDefaultClient()
 	if err != nil {
@@ -77,6 +76,8 @@ func GetFileTemporaryAccess(fileDescriptor string, duration time.Duration) (Obje
 
 	var url ObjectTempPublicUrl
 
+	// I could speed up the process by writing the signature myself, instead of asking ovh to do it.
+	// https://docs.openstack.org/swift/latest/api/temporary_url_middleware.html#hmac-sha1-signature-for-temporary-urls
 	err = client.Post("/cloud/project/" + os.Getenv("OVH_SERVICE_NAME") + "/storage/" +
 		os.Getenv("OVH_CONTAINER_ID") + "/publicUrl", map[string]interface{}{
 		"expirationDate": time.Now().Add(duration).Format(time.RFC3339),
