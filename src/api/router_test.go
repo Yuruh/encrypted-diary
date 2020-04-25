@@ -200,7 +200,7 @@ func TestRecoverMiddleware(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	funcRecover := RecoverMiddleware()(echo.HandlerFunc(func(c echo.Context) error {
-		panic("test")
+		panic("test panic")
 	}))
 
 	err := funcRecover(c)

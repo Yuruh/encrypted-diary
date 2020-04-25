@@ -24,6 +24,7 @@ type LoginBody struct {
 	Email string `json:"email"`
 	Password string `json:"password" validate:"min=9"`
 	SessionDurationMs time.Duration `json:"session_duration_ms"`
+	TwoFactorsCookie string `json:"two_factors_cookie"`
 }
 /*
 "^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
@@ -43,7 +44,20 @@ const defaultTokenDuration = time.Minute * 30
 
  */
 
-// 2FA could check: Cookie, IP, device / fingerprint, link to element which valides the cookie
+func sanitizeParsedBody(parsedBody *LoginBody) {
+	if parsedBody.SessionDurationMs != 0 {
+		// so we can use GO's time.Duration, as nanoseconds
+		parsedBody.SessionDurationMs = parsedBody.SessionDurationMs * time.Millisecond
+	} else {
+		parsedBody.SessionDurationMs = defaultTokenDuration
+	}
+
+	if parsedBody.SessionDurationMs > maxTokenDuration {
+		parsedBody.SessionDurationMs = maxTokenDuration
+	}
+}
+
+// 2FA could check: Cookie, IP, device / fingerprint, link to element which validates the cookie
 func Login(context echo.Context) error {
 	body, err := ioutil.ReadAll(context.Request().Body)
 	if err != nil {
@@ -56,27 +70,18 @@ func Login(context echo.Context) error {
 	if err != nil {
 		return context.NoContent(http.StatusBadRequest)
 	}
-	// so we can use GO's time.Duration, as nanoseconds
-	if parsedBody.SessionDurationMs != 0 {
-		parsedBody.SessionDurationMs = parsedBody.SessionDurationMs * time.Millisecond
-	} else {
-		parsedBody.SessionDurationMs = defaultTokenDuration
-	}
-
-	if parsedBody.SessionDurationMs > maxTokenDuration {
-		parsedBody.SessionDurationMs = maxTokenDuration
-	}
+	sanitizeParsedBody(&parsedBody)
 
 	var user database.User
 	database.GetDB().Where("email = ?", parsedBody.Email).First(&user)
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parsedBody.Password))
 
-	fmt.Println(time.Now().Unix() + int64(parsedBody.SessionDurationMs / time.Second))
 	if err != nil {
 		return context.String(http.StatusNotFound, "User not found")
 	} else {
 		user.Password = ""
+		// todo check that otpsecret does not appear in token
 		claims := &TokenClaims{
 			user,
 			jwt.StandardClaims{
@@ -87,10 +92,17 @@ func Login(context echo.Context) error {
 			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+
+		//2FA enabled
+		if user.OTPSecret != "" {
+			methods := [1]string{"OTP"}
+			ss, _ := token.SignedString([]byte(os.Getenv("2FA_TOKEN_SECRET")))
+			return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": methods})
+		}
+
 		ss, _ := token.SignedString([]byte(os.Getenv("ACCESS_TOKEN_SECRET")))
 
-		// TODO before sending OK, if 2FA is enabled, check if the ip address is among the trusted ones
-		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "user": user})
+		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": nil})
 	}
 }
 
@@ -163,12 +175,17 @@ func Register(context echo.Context) error {
 
 func RequestGoogleAuthenticatorQRCode(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
+	secret := authentication.GenerateRandomSecret()
 
-	uri := authentication.BuildGAuthURI(user.Email)
+	uri := authentication.BuildGAuthURI(user.Email, secret)
 	png, err := authentication.GenerateQRCodeFromURI(uri)
 	if err != nil {
-		sentry.CaptureException(err)
-		return context.NoContent(http.StatusInternalServerError)
+		return InternalError(context, err)
+	}
+	user.OTPSecret = secret
+	err = database.Update(&user)
+	if err != nil {
+		return InternalError(context, err)
 	}
 	return context.Blob(http.StatusOK, "image/png", png)
 }
@@ -183,6 +200,7 @@ func InternalError(context echo.Context, err error) error {
 func ValidateGoogleAuthCode(context echo.Context) error {
 	type Body struct {
 		Token string `json:"token" validate:"required,len=6,numeric"`
+		Email string `json:"email" validate:"required,email"`
 	}
 
 	body, err := ioutil.ReadAll(context.Request().Body)
@@ -204,7 +222,17 @@ func ValidateGoogleAuthCode(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 
-	valid, err := authentication.Authorize(parsedBody.Token)
+	var user database.User
+	dbCpy := database.GetDB().Where("email = ?", parsedBody.Email).Find(&user)
+	if dbCpy.RecordNotFound() {
+		return context.NoContent(http.StatusNotFound)
+	}
+	if dbCpy.Error != nil {
+		return InternalError(context, dbCpy.Error)
+	}
+
+	// todo handle otpsecret encryption
+	valid, err := authentication.Authorize(parsedBody.Token, user.OTPSecret)
 	if err != nil {
 		return InternalError(context, err)
 	}

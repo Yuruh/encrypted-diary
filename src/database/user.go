@@ -10,6 +10,9 @@ type User struct {
 	Password	string  `gorm:"not null" json:"-"`
 	Entries		[]Entry	`json:"entries"`
 	Labels		[]Label `json:"labels"`
+
+	// Stored encrypted
+	OTPSecret	string 	`json:"-"`
 }
 
 func (user *User) Create() error {

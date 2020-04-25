@@ -8,7 +8,7 @@ import (
 func TestBuildGAuthURI(t *testing.T) {
 	assert := asserthelper.New(t)
 	assert.Equal("otpauth://totp/EncryptedDiary:antoine.lempereur@epitech.eu?algorithm=SHA512&issuer=EncryptedDiary&secret=KNKGW6KMMVHEINTLJQ3VO2ZROVUEQ3CKJFBWUZLIJFBDKZCLJBSQ%3D%3D%3D%3D",
-		BuildGAuthURI("antoine.lempereur@epitech.eu"))
+		BuildGAuthURI("antoine.lempereur@epitech.eu", "STkyLeND6kL7Wk1uhHlJICjehIB5dKHe"))
 }
 
 func TestGenerateQRCodeFromURI(t *testing.T) {
@@ -28,7 +28,7 @@ func TestGenerateRandomSecret(t *testing.T) {
 	assert := asserthelper.New(t)
 
 	s1 := GenerateRandomSecret()
-	assert.Equal(60, len(s1))
+	assert.Equal(48, len(s1))
 	s2 := GenerateRandomSecret()
 	assert.Equal(len(s1), len(s2))
 	assert.NotEqual(s1, s2)

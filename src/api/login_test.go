@@ -136,6 +136,7 @@ func caseRequire30Min(t* testing.T) {
 
 type loginResponse struct {
 	Token string `json:"token"`
+	TwoFactorsMethods []string `json:"two_factors_methods"`
 }
 
 func caseUserFound(t *testing.T) {
@@ -307,5 +308,39 @@ func TestRequestGoogleAuthenticatorQRCode(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(http.StatusOK, recorder.Code)
 	assert.Equal("image/png", recorder.Header().Get("content-type"))
-	assert.Equal(956, len(recorder.Body.Bytes()))
+	assert.Greater(len(recorder.Body.Bytes()), 800)
+	assert.Greater(1200, len(recorder.Body.Bytes()))
+
+	var updatedUser database.User
+	database.GetDB().Find(&updatedUser)
+	assert.Greater(5, len(user.OTPSecret))
+}
+
+
+func TestLoginRequestOTP(t *testing.T) {
+	assert := asserthelper.New(t)
+	user, _ := SetupUsers()
+
+	user.OTPSecret = "a very secret otp"
+	database.Update(&user)
+
+	body := LoginBody{
+		Email:     UserHasAccessEmail,
+		Password:  "azer",
+		SessionDurationMs: 7200000 / 4, // 30 minutes
+	}
+	marsh, _ := json.Marshal(body)
+	context, recorder := BuildEchoContext(marsh, echo.MIMEApplicationJSON)
+
+	err := Login(context)
+	assert.Nil(err)
+
+	var response loginResponse
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+
+	assert.Equal(1, len(response.TwoFactorsMethods))
+	assert.Equal("OTP", response.TwoFactorsMethods[0])
+	assert.Greater(len(response.Token), 400)
 }

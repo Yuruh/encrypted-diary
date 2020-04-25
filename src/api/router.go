@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -52,7 +53,7 @@ func RecoverMiddleware() echo.MiddlewareFunc {
 					stack := make([]byte, config.StackSize)
 					length := runtime.Stack(stack, !config.DisableStackAll)
 					if !config.DisablePrintStack {
-						c.Logger().Printf("[PANIC RECOVER] %v %s\n", err, stack[:length])
+						c.Logger().Printf("[PANIC RECOVER] %v %s\n", strings.Replace(err.Error(), `\n`, "\n", -1), strings.Replace(string(stack[:length]), `\n`, "\n", -1))
 					}
 					c.Error(err)
 				}
@@ -101,8 +102,8 @@ func DeclareRoutes(app *echo.Echo) {
 	app.PUT("/labels/:id", EditLabel, RequireBody, middleware.BodyLimit("150K"))
 	app.DELETE("/labels/:id", DeleteLabel)
 
-	app.GET("/auth/google-authenticator", RequestGoogleAuthenticatorQRCode)
-	app.POST("/auth/google-authenticator", ValidateGoogleAuthCode)
+	app.POST("/auth/two-factors/otp/register", RequestGoogleAuthenticatorQRCode)
+	app.POST("/auth/two-factors/otp/authenticate", ValidateGoogleAuthCode)
 }
 
 // TODO

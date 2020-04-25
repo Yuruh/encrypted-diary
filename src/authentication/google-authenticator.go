@@ -7,7 +7,6 @@ import (
 	"github.com/skip2/go-qrcode"
 	"math/rand"
 	"net/url"
-	"os"
 )
 
 func GenerateQRCodeFromURI(uri string) ([]byte, error) {
@@ -30,11 +29,8 @@ func GenerateRandomSecret() string {
 	return base32.StdEncoding.EncodeToString(b)
 }
 
-func BuildGAuthURI(userEmail string) string {
+func BuildGAuthURI(userEmail string, secret string) string {
 	// https://github.com/google/google-authenticator/wiki/Key-Uri-Format
-
-	// TODO store secret (hash ? AES with provided env variable?)
-	secret := GenerateRandomSecret() //os.Getenv("GOOGLE_AUTH_SECRET")//[]byte{'H', 'e', 'l', 'l', 'o', '!', 0xDE, 0xAD, 0xBE, 0xEF}
 
 	secretBase32 := base32.StdEncoding.EncodeToString([]byte(secret))
 
@@ -58,10 +54,10 @@ func BuildGAuthURI(userEmail string) string {
 	return URL.String()
 }
 
-func Authorize(passCode string) (bool, error) {
+func Authorize(passCode string, secret string) (bool, error) {
 	otpc := &dgoogauth.OTPConfig{
-		Secret:      base32.StdEncoding.EncodeToString([]byte(os.Getenv("GOOGLE_AUTH_SECRET"))),
-		WindowSize:  3,
+		Secret:      secret,
+		WindowSize:  2,
 		HotpCounter: 0,
 	}
 	val, err := otpc.Authenticate(passCode)

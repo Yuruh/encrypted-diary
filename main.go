@@ -14,6 +14,7 @@ import (
 func ensureEnvSet() error {
 	required := []string{
 		"ACCESS_TOKEN_SECRET",
+		"2FA_TOKEN_SECRET",
 		"DIARY_DB_USER",
 		"DIARY_DB_PWD",
 	}
