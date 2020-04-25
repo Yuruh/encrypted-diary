@@ -134,6 +134,31 @@ info:
     url: https://app.diary.yuruh.fr/logo512.png
 openapi: 3.0.0
 paths:
+  /auth/two-factors/otp:
+    post:
+      security: []
+      tags:
+        - Account
+      operationId: 2FAOTP
+      summary: Authorize through OTP
+      description: Using an external app like Google Authenticator or LastPass Authenticator
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                passcode:
+                  type: string
+                  example: 123456
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                properties:
+                  token:
+                    type: string
   /login:
     summary: Log in
     post:
@@ -162,6 +187,9 @@ paths:
                   format: number
                   default: 1800000
                   description: Duration in milliseconds before token expires. Default 30 minutes. Maximum 1 hour.
+                two_factors_cookie:
+                  type: string
+                  description: The uuid4 created when last granted 2FA access
       responses:
         200:
           description: Success
@@ -169,8 +197,20 @@ paths:
             application/json:
               schema:
                 properties:
+                  two_factors_methods:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - OTP
+                        - SMS
+                        - EMAIL
+                    description: >
+                      If the user fails to provide a valid 2FA cookie, an additional authentication method may be requested.
+                      This array describes available methods
                   token:
                     type: string
+                    description: The access token. Only returned if `two_factors_methods` is empty
         400:
           description: Bad parameters
         404:

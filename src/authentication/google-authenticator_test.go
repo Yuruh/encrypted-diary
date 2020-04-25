@@ -23,3 +23,13 @@ func TestGenerateQRCodeFromURI(t *testing.T) {
 
 	assert.NotNil(err)
 }
+
+func TestGenerateRandomSecret(t *testing.T) {
+	assert := asserthelper.New(t)
+
+	s1 := GenerateRandomSecret()
+	assert.Equal(60, len(s1))
+	s2 := GenerateRandomSecret()
+	assert.Equal(len(s1), len(s2))
+	assert.NotEqual(s1, s2)
+}

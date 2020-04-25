@@ -33,7 +33,17 @@ Can be used client side to validate password
 
 const maxTokenDuration = time.Hour * 1
 const defaultTokenDuration = time.Minute * 30
+/*
+	COOKIE 2FA
 
+	CLIENT LOG in without providing 2FA cookie or invalid / expired cookie --->
+						<-- Server says give me 2FA
+	CLIENT sends: UUID, OTP, -->
+						<-- Server stores it, sets an expiration date (even if client sets one), stores user-agent, stores ip
+
+ */
+
+// 2FA could check: Cookie, IP, device / fingerprint, link to element which valides the cookie
 func Login(context echo.Context) error {
 	body, err := ioutil.ReadAll(context.Request().Body)
 	if err != nil {
@@ -79,6 +89,7 @@ func Login(context echo.Context) error {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 		ss, _ := token.SignedString([]byte(os.Getenv("ACCESS_TOKEN_SECRET")))
 
+		// TODO before sending OK, if 2FA is enabled, check if the ip address is among the trusted ones
 		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "user": user})
 	}
 }
@@ -167,7 +178,6 @@ func InternalError(context echo.Context, err error) error {
 	sentry.CaptureException(err)
 	fmt.Println("INTERNAL ERROR:", err.Error())
 	return context.NoContent(http.StatusInternalServerError)
-
 }
 
 func ValidateGoogleAuthCode(context echo.Context) error {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dgryski/dgoogauth"
 	"github.com/skip2/go-qrcode"
+	"math/rand"
 	"net/url"
 	"os"
 )
@@ -18,9 +19,22 @@ func GenerateQRCodeFromURI(uri string) ([]byte, error) {
 	return png, err
 }
 
+func GenerateRandomSecret() string {
+	const possibilities = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const secretLength = 30
+
+	b := make([]byte, secretLength)
+	for i := range b {
+		b[i] = possibilities[rand.Intn(len(possibilities))]
+	}
+	return base32.StdEncoding.EncodeToString(b)
+}
+
 func BuildGAuthURI(userEmail string) string {
 	// https://github.com/google/google-authenticator/wiki/Key-Uri-Format
-	secret := os.Getenv("GOOGLE_AUTH_SECRET")//[]byte{'H', 'e', 'l', 'l', 'o', '!', 0xDE, 0xAD, 0xBE, 0xEF}
+
+	// TODO store secret (hash ? AES with provided env variable?)
+	secret := GenerateRandomSecret() //os.Getenv("GOOGLE_AUTH_SECRET")//[]byte{'H', 'e', 'l', 'l', 'o', '!', 0xDE, 0xAD, 0xBE, 0xEF}
 
 	secretBase32 := base32.StdEncoding.EncodeToString([]byte(secret))
 
