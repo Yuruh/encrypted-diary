@@ -8,11 +8,12 @@ type User struct {
 	BaseModel
 	Email       string  `gorm:"type:varchar(100);unique_index" json:"email" validate:"email,required"`
 	Password	string  `gorm:"not null" json:"-"`
-	Entries		[]Entry	`json:"entries"`
-	Labels		[]Label `json:"labels"`
+	Entries		[]Entry	`json:"-"`
+	Labels		[]Label `json:"-"`
 
 	// Stored encrypted
 	OTPSecret	string 	`json:"-"`
+	HasRegisteredOTP bool `json:"has_registered_otp"`
 }
 
 func (user *User) Create() error {

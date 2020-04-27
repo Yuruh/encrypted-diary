@@ -16,7 +16,7 @@ import (
 )
 
 func AuthMiddleware() echo.MiddlewareFunc {
-	unprotectedPaths := [3]string{"/login", "/register", "/openapi.yml"}
+	unprotectedPaths := [4]string{"/login", "/register", "/openapi.yml", "/auth/two-factors/otp/authenticate"}
 
 	return middleware.JWTWithConfig(middleware.JWTConfig{
 		Claims: &TokenClaims{},
@@ -91,6 +91,8 @@ func DeclareRoutes(app *echo.Echo) {
 	app.GET("/", hello)
 	app.GET("/openapi.yml", SendApiSpec)
 
+	app.GET("/me", GetMe)
+
 	app.GET("/entries", GetEntries)
 	app.GET("/entries/:id", GetEntry)
 	app.POST("/entries", AddEntry, RequireBody)
@@ -103,7 +105,8 @@ func DeclareRoutes(app *echo.Echo) {
 	app.DELETE("/labels/:id", DeleteLabel)
 
 	app.POST("/auth/two-factors/otp/register", RequestGoogleAuthenticatorQRCode)
-	app.POST("/auth/two-factors/otp/authenticate", ValidateGoogleAuthCode)
+	app.GET("/auth/two-factors/otp/token", RequestTwoFactorsToken)
+	app.POST("/auth/two-factors/otp/authenticate", ValidateOTPCode)
 }
 
 // TODO

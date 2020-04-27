@@ -134,22 +134,54 @@ info:
     url: https://app.diary.yuruh.fr/logo512.png
 openapi: 3.0.0
 paths:
-  /auth/two-factors/otp:
+  /auth/two-factors/otp/register:
     post:
+      tags:
+        - Account
+      operationId: regsiterOTP
+      summary: OTP Registration
+      description: Retrieve QR code to scan with your OTP application (e.g. Google Authenticator, LastPass Authenticator, ...)
+      responses:
+        200:
+          description: The QR Code and the token to validate registration
+          content:
+            multipart/form-data:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    format: jwt
+                  qr:
+                    description: QR Code to scan
+                    type: string
+                    format: binary
+  /auth/two-factors/otp/authenticate:
+    post:
+      summary: OTP Authentication
+      description: >
+        Using an external app like Google Authenticator or LastPass Authenticator.
+        If it it called for the first time, it will validate OTP Registration
       security: []
       tags:
         - Account
-      operationId: 2FAOTP
-      summary: Authorize through OTP
-      description: Using an external app like Google Authenticator or LastPass Authenticator
+      operationId: authenticateOTP
       requestBody:
         content:
           application/json:
             schema:
+              required:
+                - passcode
+                - token
               properties:
                 passcode:
                   type: string
                   example: 123456
+                  description: The code displayed by the OTP app (always 6 numbers)
+                token:
+                  type: string
+                  format: jwt
+                  description: The token returned by /login
       responses:
         200:
           description: Success
@@ -159,6 +191,10 @@ paths:
                 properties:
                   token:
                     type: string
+        400:
+          description: Bad Request. Either due to args format or bad code
+        404:
+          description: User not found
   /login:
     summary: Log in
     post:
@@ -189,7 +225,8 @@ paths:
                   description: Duration in milliseconds before token expires. Default 30 minutes. Maximum 1 hour.
                 two_factors_cookie:
                   type: string
-                  description: The uuid4 created when last granted 2FA access
+                  format: uuid
+                  description: The uuid created when last granted 2FA access
       responses:
         200:
           description: Success
@@ -210,7 +247,9 @@ paths:
                       This array describes available methods
                   token:
                     type: string
-                    description: The access token. Only returned if `two_factors_methods` is empty
+                    description: >
+                      The access token if `two_factors_methods` is empty. Otherwise this token must be sent to the 2FA
+                      authentication method that the user chose
         400:
           description: Bad parameters
         404:

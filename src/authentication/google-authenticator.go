@@ -37,10 +37,7 @@ func BuildGAuthURI(userEmail string, secret string) string {
 	account := userEmail
 	issuer := "EncryptedDiary"
 
-	URL, err := url.Parse("otpauth://totp")
-	if err != nil {
-		panic(err)
-	}
+	URL, _ := url.Parse("otpauth://totp")
 
 	URL.Path += "/" + url.PathEscape(issuer) + ":" + url.PathEscape(account)
 

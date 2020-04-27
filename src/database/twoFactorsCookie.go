@@ -1,5 +1,7 @@
 package database
 
+//context.RealIP()
+
 type TwoFactorsCookie struct {
 	BaseModel
 	Uuid		string `json:"uuid" validate:"uuid4" gorm:"type:varchar(36)"`
