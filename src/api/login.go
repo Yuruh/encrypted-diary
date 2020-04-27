@@ -189,6 +189,7 @@ func RequestGoogleAuthenticatorQRCode(context echo.Context) error {
 		return InternalError(context, err)
 	}
 
+	fmt.Println("otp secret in request", user.OTPSecret)
 
 
 	/*
@@ -311,6 +312,7 @@ func ValidateOTPCode(context echo.Context) error {
 	}
 
 	// todo handle otpsecret encryption
+	fmt.Println("otp secret in verif", user.OTPSecret)
 	valid, err := authentication.Authorize(parsedBody.Passcode, user.OTPSecret)
 	if err != nil {
 		return InternalError(context, err)

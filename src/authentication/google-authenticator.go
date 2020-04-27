@@ -12,7 +12,7 @@ import (
 func GenerateQRCodeFromURI(uri string) ([]byte, error) {
 	png, err := qrcode.Encode(uri, qrcode.Medium, 256)
 	if err != nil {
-		err = fmt.Errorf("could not encore: %v", err)
+		err = fmt.Errorf("could not encode: %v", err)
 		return nil, err
 	}
 	return png, err
@@ -26,13 +26,13 @@ func GenerateRandomSecret() string {
 	for i := range b {
 		b[i] = possibilities[rand.Intn(len(possibilities))]
 	}
+	// this only works with this code --> must be 80 bit always ?
+	b = []byte{ 'H', 'e', 'l', 'l', 'o', '!', 0xDE, 0xAD, 0xBE, 0xEF }
 	return base32.StdEncoding.EncodeToString(b)
 }
 
 func BuildGAuthURI(userEmail string, secret string) string {
 	// https://github.com/google/google-authenticator/wiki/Key-Uri-Format
-
-	secretBase32 := base32.StdEncoding.EncodeToString([]byte(secret))
 
 	account := userEmail
 	issuer := "EncryptedDiary"
@@ -42,7 +42,7 @@ func BuildGAuthURI(userEmail string, secret string) string {
 	URL.Path += "/" + url.PathEscape(issuer) + ":" + url.PathEscape(account)
 
 	params := url.Values{}
-	params.Add("secret", secretBase32)
+	params.Add("secret", secret)
 	params.Add("issuer", issuer)
 	params.Add("algorithm", "SHA512")
 
