@@ -25,35 +25,23 @@ type getEntryResponse struct {
 }
 
 func TestGetEntry(t *testing.T) {
+	assert := asserthelper.New(t)
+
 	user, _ := SetupUsers()
 
 	//should be in setup code
 	entry := database.Entry{
 		PartialEntry: database.PartialEntry{
 			Content: "",
-			Title:   "An awesome tile",
+			Title:   "An awesome title",
 		},
-		UserID:user.ID,
+		UserID: user.ID,
 	}
-	_ = database.Insert(&entry)
+	err := database.Insert(&entry)
+	assert.Nil(err)
 
-	e := echo.New()
+	context, recorder := BuildEchoContext(nil, echo.MIMEApplicationJSON)
 
-	/*
-		Very ugly fix caused by echo internal problems
-		A maintainer suggests this
-		https://github.com/labstack/echo/pull/1463#issuecomment-581107410
-	*/
-	r := e.Router()
-	r.Add("DELETE", "/entries/:id", func(ctx echo.Context) error {return nil})
-	request, err := http.NewRequest("GET", "/entries/" + strconv.Itoa(int(entry.ID)), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-
-	recorder := httptest.NewRecorder()
-	context := e.NewContext(request, recorder)
 	context.Set("user", user)
 
 	context.SetParamNames("id")
@@ -63,19 +51,12 @@ func TestGetEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recorder.Code != http.StatusOK {
-		t.Errorf("Bad status, expected %v, got %v (%v)", http.StatusOK, recorder.Code, recorder.Body.String())
-	}
+	assert.Equal(http.StatusOK, recorder.Code)
 
 	var response getEntryResponse
 	err = json.Unmarshal(recorder.Body.Bytes(), &response)
-	if err != nil {
-		t.Error("Could not read response")
-	}
-
-	if response.Entry.Title != "An awesome tile" {
-		t.Errorf("Expected %v, got %v", "An awesome tile", response.Entry.Title)
-	}
+	assert.Nil(err)
+	assert.Equal("An awesome title", response.Entry.Title)
 }
 
 func TestGetEntries(t *testing.T) {
