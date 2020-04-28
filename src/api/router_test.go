@@ -190,7 +190,7 @@ func TestDeclareRoutes(t *testing.T) {
 	e := echo.New()
 	assert := asserthelper.New(t)
 	DeclareRoutes(e)
-	assert.Equal(13, len(e.Routes()))
+	assert.Equal(17, len(e.Routes()))
 }
 
 func TestRecoverMiddleware(t *testing.T) {
@@ -200,7 +200,7 @@ func TestRecoverMiddleware(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	funcRecover := RecoverMiddleware()(echo.HandlerFunc(func(c echo.Context) error {
-		panic("test")
+		panic("test panic")
 	}))
 
 	err := funcRecover(c)

@@ -136,6 +136,7 @@ func caseRequire30Min(t* testing.T) {
 
 type loginResponse struct {
 	Token string `json:"token"`
+	TwoFactorsMethods []string `json:"two_factors_methods"`
 }
 
 func caseUserFound(t *testing.T) {
@@ -294,4 +295,33 @@ func caseUserCreated(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Errorf("Bad status, expected %v, got %v (%v)", http.StatusCreated, recorder.Code, recorder.Body.String())
 	}
+}
+
+func TestLoginRequestOTP(t *testing.T) {
+	assert := asserthelper.New(t)
+	user, _ := SetupUsers()
+
+	user.OTPSecret = "a very secret otp"
+	user.HasRegisteredOTP = true
+	database.Update(&user)
+
+	body := LoginBody{
+		Email:     UserHasAccessEmail,
+		Password:  "azer",
+		SessionDurationMs: 7200000 / 4, // 30 minutes
+	}
+	marsh, _ := json.Marshal(body)
+	context, recorder := BuildEchoContext(marsh, echo.MIMEApplicationJSON)
+
+	err := Login(context)
+	assert.Nil(err)
+
+	var response loginResponse
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+
+	assert.Equal(1, len(response.TwoFactorsMethods))
+	assert.Equal("OTP", response.TwoFactorsMethods[0])
+	assert.Greater(len(response.Token), 400)
 }

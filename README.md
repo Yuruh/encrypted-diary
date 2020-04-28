@@ -24,7 +24,9 @@ Only 2 routes should require password: login, and change-password (which has to 
 
 - Temporary login. Token no longer than 2 hour and set by client, and client should auto destroy encryption key when session expires.
 - 2FA https://github.com/dgryski/dgoogauth
-- External auth server that implements OAuth2 (https://pragmaticwebsecurity.com/files/cheatsheets/oauth2securityfordevelopers.pdf)
+
+
+- (later on) External auth server that implements OAuth2 (https://pragmaticwebsecurity.com/files/cheatsheets/oauth2securityfordevelopers.pdf)
 https://github.com/ory/hydra
 
 ## App Features
@@ -32,7 +34,7 @@ https://github.com/ory/hydra
 - Medias for each entry. Images for start. Should also be client-side encrypted. Use CDN (https://www.cloudflare.com/fr-fr/plans/, seems free)
         --> Done with labels avatars, but i'm not sure i can use a CDN with client side  encryption 
 
-- Entry search
+- Entry search (will be done when i've written enough entries)
 # Resources
 
 https://core.telegram.org/techfaq#q-how-does-end-to-end-encryption-work-in-mtproto

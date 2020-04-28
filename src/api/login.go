@@ -21,6 +21,7 @@ type LoginBody struct {
 	Email string `json:"email"`
 	Password string `json:"password" validate:"min=9"`
 	SessionDurationMs time.Duration `json:"session_duration_ms"`
+	TwoFactorsCookie string `json:"two_factors_cookie"`
 }
 /*
 "^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
@@ -30,7 +31,49 @@ Can be used client side to validate password
 
 const maxTokenDuration = time.Hour * 1
 const defaultTokenDuration = time.Minute * 30
+/*
+	COOKIE 2FA
 
+	CLIENT LOG in without providing 2FA cookie or invalid / expired cookie --->
+						<-- Server says give me 2FA
+	CLIENT sends: UUID, OTP, -->
+						<-- Server stores it, sets an expiration date (even if client sets one), stores user-agent, stores ip
+
+ */
+
+func sanitizeParsedBody(parsedBody *LoginBody) {
+	if parsedBody.SessionDurationMs != 0 {
+		// so we can use GO's time.Duration, as nanoseconds
+		parsedBody.SessionDurationMs = parsedBody.SessionDurationMs * time.Millisecond
+	} else {
+		parsedBody.SessionDurationMs = defaultTokenDuration
+	}
+
+	if parsedBody.SessionDurationMs > maxTokenDuration {
+		parsedBody.SessionDurationMs = maxTokenDuration
+	}
+}
+
+func BuildJwtToken(user database.User, sessionDuration time.Duration, secret []byte) string {
+	user.Password = ""
+	user.OTPSecret = ""
+
+	claims := &TokenClaims{
+		user,
+		jwt.StandardClaims{
+			ExpiresAt: time.Now().Unix() + int64(sessionDuration / time.Second),
+			IssuedAt: time.Now().Unix(),
+			Issuer: "auth.yuruh.fr", // This would make sense if auth server was external
+			Audience: "api.diary.yuruh.fr",
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	ss, _ := token.SignedString(secret)
+
+	return ss
+}
+
+// 2FA could check: Cookie, IP, device / fingerprint, link to element which validates the cookie
 func Login(context echo.Context) error {
 	body, err := ioutil.ReadAll(context.Request().Body)
 	if err != nil {
@@ -43,40 +86,27 @@ func Login(context echo.Context) error {
 	if err != nil {
 		return context.NoContent(http.StatusBadRequest)
 	}
-	// so we can use GO's time.Duration, as nanoseconds
-	if parsedBody.SessionDurationMs != 0 {
-		parsedBody.SessionDurationMs = parsedBody.SessionDurationMs * time.Millisecond
-	} else {
-		parsedBody.SessionDurationMs = defaultTokenDuration
-	}
-
-	if parsedBody.SessionDurationMs > maxTokenDuration {
-		parsedBody.SessionDurationMs = maxTokenDuration
-	}
+	sanitizeParsedBody(&parsedBody)
 
 	var user database.User
 	database.GetDB().Where("email = ?", parsedBody.Email).First(&user)
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parsedBody.Password))
 
-	fmt.Println(time.Now().Unix() + int64(parsedBody.SessionDurationMs / time.Second))
 	if err != nil {
 		return context.String(http.StatusNotFound, "User not found")
 	} else {
-		user.Password = ""
-		claims := &TokenClaims{
-			user,
-			jwt.StandardClaims{
-				ExpiresAt: time.Now().Unix() + int64(parsedBody.SessionDurationMs / time.Second),
-				IssuedAt: time.Now().Unix(),
-				Issuer: "auth.yuruh.fr", // This would make sense if auth server was external
-				Audience: "api.diary.yuruh.fr",
-			},
-		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-		ss, _ := token.SignedString([]byte(os.Getenv("ACCESS_TOKEN_SECRET")))
+		//2FA enabled
+		if user.HasRegisteredOTP {
+			methods := [1]string{"OTP"}
+			// We generate a token that cannot be used to authenticate request but will be used to validate 2FA
+			ss := BuildJwtToken(user, parsedBody.SessionDurationMs, []byte(os.Getenv("2FA_TOKEN_SECRET")))
+			return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": methods})
+		} else {
+			ss := BuildJwtToken(user, parsedBody.SessionDurationMs, []byte(os.Getenv("ACCESS_TOKEN_SECRET")))
+			return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": nil})
 
-		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "user": user})
+		}
 	}
 }
 
@@ -146,3 +176,4 @@ func Register(context echo.Context) error {
 	}
 	return context.JSON(http.StatusCreated, map[string]interface{}{"user": user})
 }
+

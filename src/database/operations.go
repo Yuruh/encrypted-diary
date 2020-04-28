@@ -22,6 +22,7 @@ func Insert(m Model) error {
 	return nil
 }
 
+// Does a full update
 func Update(m Model) error {
 	err := m.Validate()
 	if err != nil {

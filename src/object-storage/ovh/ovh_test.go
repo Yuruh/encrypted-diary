@@ -41,8 +41,8 @@ func TestGetFileTemporaryAccess(t *testing.T) {
 	parsedTime, err := time.Parse(time.RFC3339, fileAccess.ExpirationDate)
 	assert.Nil(err)
 
-	assert.Greater(parsedTime.Second(), time.Now().Second())
-	assert.Greater(time.Now().Add(time.Second * 4).Second(), parsedTime.Second())
+	assert.Greater(parsedTime.Unix(), time.Now().Unix())
+	assert.Greater(time.Now().Add(time.Second * 4).Unix(), parsedTime.Unix())
 
 	req, err := http.NewRequest(http.MethodGet, fileAccess.URL, nil)
 	assert.Nil(err)

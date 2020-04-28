@@ -6,9 +6,6 @@ services:
 env:
   matrix:
   - DOCKER_COMPOSE_VERSION=1.21.2
-  global:
-  - secure: YiXh6eE9vAsOu1Rb6I1EPRNOGZqDlFyJ5EGv1RWT2tQcBnuQB3svBH4easIhMB75GBrqD6UOPSMbnh4sEL5rji5OMK0ofuO94BUAuCdrSsmiZjEUProIj6NxaPeAL4JY1JYmq8ipgW9fwds0b9ibbT/RbeAPlOfd0nm9iS4c5aPDXM1QbEaaYh9oLlkKxDpb5LnqSafn+42kdPNUIA1l+Cxkq8tt1wPNQktIFZ5lWaKUTPvrnPSipL0BAnA2VpuUnbjglo+eskQG1hSmDnF+XV7IYk7TyxQtaDHL5OdSfMXNUITr6zQQUOg9XUhapoyuQCGM70bIsqrj3+lwC+5YRkOZTajB1puAF0Okgy9AgHVLrZbtyGQLg1mYes+f0BLkZtTkjLf8MWgP874xkAxW5dy1mjyAEPg6BzM1cjA0i8UT0Dz5LYydjN0GwhdN5bqNK4YaYfIw07Y4dcibBAX5y0sfrbTsUK66usqKXX38VRQ89kDiu7AQt55j2GVdgYab7onTc89OaTVZq84iRA+90/UpQyVCy9kW/1kwoDF2C2RAUZItF9YWTeUHL+nYoKgNkWmJ85zMMcwfxHRBQTP4JBH1TiEQX3sNrCQul9ve7yNot7pS2dEiPzk/40bN08iUuaxXgMFp2Trj9v9XabpKyEi1/DaU0NRQUxs063Os+rg=
-  - secure: PVh3Db3Ph2ZDJXGOqQqFU87EGnrVuFu2VhKTvVncapoC0nYAUmaqhtaBdjHY6kw9ok+EXmG1r2uc9FgpCOcxjUgdgdh+PHcCvejD6+vBAEPJIBvDaMOCKupqgA2H/T4CZxeplMN/emqhI+pajjERckETj/JRPWIej78WKHLu9k/KCkm8myWjVA7Wey7wTbhm6tu4VXH7hj70uRTwk3hkI6cYv4DaWD7zN8ABwEoiZsxy7PnbTEbF/oXQNkc3kHgAdIY31YWebR/KvJTME82WAFtVTRgjOODZf5dg5OyGFGaAxInGRQdpw47xYwY/GUej5BjEOf4OlX0zEr+d7KLeOMfiLKSc7llfVZucUacCqB8r+YuOd50JhQFHfJ03+JVMkhDWSLbo1sGGElBtW9zlOXWDfOBaySApdefGmw7OKkWQNLdSldAmpYU1O1/nsD5hgcDcy87NUwBOVKEih8f0HAROvzdoVz3bNF85j+5KqRA4AbGqaPfiHDwu3iCJLxYJcUyseZ2zk2DdSQmPP0a2olV2Va7VLuuqArIEYZA/9elTCenmSfjyk5sTQOlyFRYAVDTzcBLvnDtogGo0+yJvwn1hglSHg5tUskn3HXmNqHkdNTwyzGPz3I7sE0HEUxpwRgiBGTm3Dx/RdyIYBUGHqn8m2/veGHzvp88zc8IPlrk=
 before_install:
 - sudo rm /usr/local/bin/docker-compose
 - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname
@@ -26,6 +23,21 @@ jobs:
   include:
   - stage: test
     script:
+    - touch .env.test
+    # set env for tests in container
+    # could probably be scripted
+    - echo OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY >> .env.test
+    - echo OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET >> .env.test
+    - echo OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY >> .env.test
+    - echo OVH_ENDPOINT=$OVH_ENDPOINT >> .env.test
+    - echo OVH_SERVICE_NAME=$OVH_SERVICE_NAME >> .env.test
+    - echo OVH_CONTAINER_ID=$OVH_CONTAINER_ID >> .env.test
+    - echo OVH_OPENSTACK_CONTAINER_URL=$OVH_OPENSTACK_CONTAINER_URL >> .env.test
+    - echo SENTRY_DSN=$SENTRY_DSN >> .env.test
+    - echo SENTRY_ENVIRONMENT=$SENTRY_ENVIRONMENT >> .env.test
+    - echo 2FA_TOKEN_SECRET=$2FA_TOKEN_SECRET >> .env.test
+    - echo ACCESS_TOKEN_SECRET=$ACCESS_TOKEN_SECRET >> .env.test
+
     - docker-compose -f docker-compose.test.yml build
     - docker-compose -f docker-compose.test.yml -p diary-tests up -d
     - docker exec -it diary-tests_diary-api_1 go test ./... -coverprofile=coverage.txt

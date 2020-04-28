@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"net/http/httptest"
 )
@@ -19,16 +20,17 @@ func SetupUsers() (database.User, database.User) {
 	if err.Error != nil {
 		fmt.Println(err.Error.Error())
 	}
+	hash, _ := bcrypt.GenerateFromPassword([]byte("azer"), bcrypt.DefaultCost)
 	var user1 = database.User{
 		BaseModel: database.BaseModel{},
 		Email:     UserHasAccessEmail,
-		Password:  "azer",
+		Password:  string(hash),
 	}
 	_ = database.Insert(&user1)
 	var user2 = database.User{
 		BaseModel: database.BaseModel{},
 		Email:     UserNoAccessEmail,
-		Password:  "azer",
+		Password:  string(hash),
 	}
 	_ = database.Insert(&user2)
 	return user1, user2

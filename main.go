@@ -6,6 +6,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/getsentry/sentry-go"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -13,6 +14,7 @@ import (
 func ensureEnvSet() error {
 	required := []string{
 		"ACCESS_TOKEN_SECRET",
+		"2FA_TOKEN_SECRET",
 		"DIARY_DB_USER",
 		"DIARY_DB_PWD",
 	}
@@ -26,6 +28,7 @@ func ensureEnvSet() error {
 }
 
 func main() {
+	rand.Seed(int64(os.Getpid()) * time.Now().Unix())
 	err := ensureEnvSet()
 	if err != nil {
 		sentry.CaptureException(err)

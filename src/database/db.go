@@ -18,7 +18,7 @@ type BaseModel struct{
 	ID        uint `gorm:"primary_key" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	DeletedAt *time.Time `sql:"index" json:"deleted_at"`
+	DeletedAt *time.Time `sql:"index" json:"-"`
 }
 
 func GetDB() *gorm.DB {
@@ -32,6 +32,7 @@ func GetDB() *gorm.DB {
 		instance = Connect()
 		instance.LogMode(true)
 		instance.Set("gorm:auto_preload", true)
+		RunMigration()
 
 		atomic.StoreUint32(&initialized, 1)
 	}
