@@ -27,7 +27,7 @@ jobs:
     # set env for tests in container
     # could probably be scripted
     - echo OVH_APPLICATION_KEY=$OVH_APPLICATION_KEY >> .env.test
-    - echo OVH_APPLICATION_SECRET$OVH_APPLICATION_SECRET >> .env.test
+    - echo OVH_APPLICATION_SECRET=$OVH_APPLICATION_SECRET >> .env.test
     - echo OVH_CONSUMER_KEY=$OVH_CONSUMER_KEY >> .env.test
     - echo OVH_ENDPOINT=$OVH_ENDPOINT >> .env.test
     - echo OVH_SERVICE_NAME=$OVH_SERVICE_NAME >> .env.test
