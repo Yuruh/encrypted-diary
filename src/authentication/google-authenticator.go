@@ -19,15 +19,17 @@ func GenerateQRCodeFromURI(uri string) ([]byte, error) {
 }
 
 func GenerateRandomSecret() string {
-	const possibilities = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const secretLength = 30
+	const possibilitiesRange = 255
+	const secretLength = 10
 
 	b := make([]byte, secretLength)
 	for i := range b {
-		b[i] = possibilities[rand.Intn(len(possibilities))]
+		b[i] = byte(rand.Intn(possibilitiesRange))
 	}
+//	fmt.Println(b)
 	// this only works with this code --> must be 80 bit always ?
-	b = []byte{ 'H', 'e', 'l', 'l', 'o', '!', 0xDE, 0xAD, 0xBE, 0xEF }
+	//b = []byte{ 'H', 'e', 'l', 'l', 'o', '!', 0xDE, 0xAD, 0xBE, 0xEF }
+	//fmt.Println(b)
 	return base32.StdEncoding.EncodeToString(b)
 }
 

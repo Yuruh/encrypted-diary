@@ -145,17 +145,27 @@ paths:
         200:
           description: The QR Code and the token to validate registration
           content:
-            multipart/form-data:
+            image/png:
               schema:
-                type: object
+                type: string
+                format: binary
+  /auth/two-factors/otp/token:
+    get:
+      tags:
+        - Account
+      operationId: getTfaToken
+      summary: GET 2FA Token
+      description: Retrieve a jwt token to send with a two factors service registration
+      responses:
+        200:
+          description: The token
+          content:
+            application/json:
+              schema:
                 properties:
                   token:
                     type: string
                     format: jwt
-                  qr:
-                    description: QR Code to scan
-                    type: string
-                    format: binary
   /auth/two-factors/otp/authenticate:
     post:
       summary: OTP Authentication
@@ -181,7 +191,7 @@ paths:
                 token:
                   type: string
                   format: jwt
-                  description: The token returned by /login
+                  description: The token returned either during login or TFA service registration
       responses:
         200:
           description: Success
@@ -192,7 +202,7 @@ paths:
                   token:
                     type: string
         400:
-          description: Bad Request. Either due to args format or bad code
+          description: Bad Request. Either due to args format or refused code
         404:
           description: User not found
   /login:
