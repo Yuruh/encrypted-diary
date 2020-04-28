@@ -28,26 +28,24 @@ func ensureEnvSet() error {
 }
 
 func main() {
+	log.Println("Launching Sentry ...")
+	err := sentry.Init(sentry.ClientOptions{})
+	if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}
+
 	rand.Seed(int64(os.Getpid()) * time.Now().Unix())
-	err := ensureEnvSet()
+	err = ensureEnvSet()
 	if err != nil {
 		sentry.CaptureException(err)
 		os.Exit(1)
 	}
-	err = sentry.Init(sentry.ClientOptions{})
-	if err != nil {
-		log.Fatalf("sentry.Init: %s", err)
-	}
 	// Flush buffered events before the program terminates.
 	defer sentry.Flush(2 * time.Second)
 
-/*	eventId := sentry.CaptureMessage("It works!")
-	log.Println("Sentry event id", *eventId)
-	eventId = sentry.CaptureException(errors.New("sentry test error"))
-	log.Println("Sentry error event id", *eventId)*/
-
 	defer database.GetDB().Close()
 
+	log.Println("Running Database migration from main")
 	database.RunMigration()
 
 	api.RunHttpServer()
