@@ -160,10 +160,10 @@ func ValidateOTPCode(context echo.Context) error {
 				return InternalError(context, dbCpy.Error)
 			}
 		}
-		// Get expiration in nanoseconds
-		expiration := claims["exp"].(time.Duration) * time.Second
-		ss := BuildJwtToken(user, expiration, []byte(os.Getenv("ACCESS_TOKEN_SECRET")))
-		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": nil})
+		// Retrieve duration in nanoseconds from token
+		tokenTTL := time.Duration(claims["exp"].(float64)) * time.Second - time.Duration(time.Now().UnixNano())
+		ss := BuildJwtToken(user, tokenTTL, []byte(os.Getenv("ACCESS_TOKEN_SECRET")))
+		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss})
 	} else {
 		return context.String(http.StatusBadRequest, "Code refused")
 	}
