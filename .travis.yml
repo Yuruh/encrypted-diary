@@ -24,6 +24,7 @@ jobs:
   - stage: test
     script:
     - touch .env.test #empty env file so docker is not lost. Env is provided by travis
+    - echo $OVH_OPENSTACK_CONTAINER_URL #debug
     - docker-compose -f docker-compose.test.yml build
     - docker-compose -f docker-compose.test.yml -p diary-tests up -d
     - docker exec -it diary-tests_diary-api_1 go test ./... -coverprofile=coverage.txt
