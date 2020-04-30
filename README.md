@@ -3,38 +3,56 @@
 [![codecov](https://codecov.io/gh/Yuruh/encrypted-diary/branch/master/graph/badge.svg)](https://codecov.io/gh/Yuruh/encrypted-diary)
 
 
-# Goal
+# Encrypted diary
 
-Building a diary solution where every entry is encrypted using the user's password.
-It should be hosted on my servers, where multiple users could register, and offer the ability to self host, using a docker image and / or clear instructions
+A personal diary where every entry is encrypted using the user's password as encryption key.
 
-# Encryption process
+## Self Host
 
-To create encryption key : PBKDF2 hashing of user password
+You may self host this project.
 
-To encrypt / decrypt journal entries: AES-256
+TODO : --> explain dk compose, .env, ovh / postgresql
 
-**All encryption must be done client side**
+## About Encryption
 
-Only 2 routes should require password: login, and change-password (which has to rewrite all user journal entries)
+When a user logs in, an encryption key is created using his password and [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2). Your data is then encrypted / decrypted using [AES](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard).
 
-# Road map
+This means that even if the database were to be compromised, your personal data would be safe as long as your password is. This also mean that if you forget your password your data is lost.
 
-## Security
+For practical reasons, some data that could be considered personal is not encrypted.
 
-- Temporary login. Token no longer than 2 hour and set by client, and client should auto destroy encryption key when session expires.
-- 2FA https://github.com/dgryski/dgoogauth
+Here's the list of encrypted data:
+* Entries Content
+* Labels Avatar
 
+And here's what isn't - *and why*:
+* User Email Address - *For login*
+* Entries Title - *For Entry search*
+* Labels Names - *For Entry / Label search*
+* Entries Date - *For Entry search*
 
-- (later on) External auth server that implements OAuth2 (https://pragmaticwebsecurity.com/files/cheatsheets/oauth2securityfordevelopers.pdf)
-https://github.com/ory/hydra
+## Features
+ 
+* Short-lived session. Maximum 1h and auto log out on session end.
+* Virtual Keyboard to enter password and prevent key logging.
+* Two Factors Authentication with [Time-based One Time Password](https://en.wikipedia.org/wiki/One-time_password#Time-synchronized) (TOTP)
+* Entry edition using **Markdown** format with live preview.
+* Labels to categorize each entry, find entries by theme and act as a preview of an entry content
 
-## App Features
+## Road map
 
-- Medias for each entry. Images for start. Should also be client-side encrypted. Use CDN (https://www.cloudflare.com/fr-fr/plans/, seems free)
-        --> Done with labels avatars, but i'm not sure i can use a CDN with client side  encryption 
+*Disordered*
 
-- Entry search (will be done when i've written enough entries)
-# Resources
+* Additional 2FA Methods
+* 2FA Recovery codes
+* Entries Media
+* Entry search
+* Read only user for demo purposes
+
+## Contributing
+
+TODO
+
+## Resources
 
 https://core.telegram.org/techfaq#q-how-does-end-to-end-encryption-work-in-mtproto

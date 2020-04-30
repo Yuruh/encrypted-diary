@@ -45,8 +45,7 @@ func main() {
 
 	defer database.GetDB().Close()
 
-	log.Println("Running Database migration from main")
-	database.RunMigration()
+//	database.RunMigration()
 
 	api.RunHttpServer()
 }

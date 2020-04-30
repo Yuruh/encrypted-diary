@@ -34,7 +34,6 @@ func GetDB() *gorm.DB {
 		instance.Set("gorm:auto_preload", true)
 
 		atomic.StoreUint32(&initialized, 1)
-		log.Println("Running Database migration from GETDB")
 		RunMigration()
 	}
 
