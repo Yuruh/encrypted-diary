@@ -32,9 +32,9 @@ func GetDB() *gorm.DB {
 		instance = Connect()
 		instance.LogMode(true)
 		instance.Set("gorm:auto_preload", true)
-		RunMigration()
 
 		atomic.StoreUint32(&initialized, 1)
+		RunMigration()
 	}
 
 	return instance
@@ -42,6 +42,7 @@ func GetDB() *gorm.DB {
 
 
 func Connect() *gorm.DB {
+	log.Println("Connecting to database...")
 	var uri = "user=" + os.Getenv("DIARY_DB_USER") +
 		" host=diary-postgres password=" + os.Getenv("DIARY_DB_PWD") + " sslmode=disable"
 
