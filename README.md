@@ -15,9 +15,9 @@ TODO : --> explain dk compose, .env, ovh / postgresql
 
 ## About Encryption
 
-When a user logs in, an encryption key is created using his password and [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2). Your data is then encrypted / decrypted using [AES](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard).
+When a user logs in, an encryption key is created using his password and [Password-Based Key Derivation Function 2](https://en.wikipedia.org/wiki/PBKDF2) (PBKDF2). His data is then encrypted / decrypted using [Advanced Encryption Standard](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard) (AES).
 
-This means that even if the database were to be compromised, your personal data would be safe as long as your password is. This also mean that if you forget your password your data is lost.
+This means that even if the database were to be compromised, his personal data would be safe as long as his password is. This also mean that if the user forgets his password, his data is lost.
 
 For practical reasons, some data that could be considered personal is not encrypted.
 
@@ -49,7 +49,7 @@ And here's what isn't - *and why*:
 * Entry search
 * Read only user for demo purposes
 
-## Contributing
+## Contributing
 
 TODO
 
