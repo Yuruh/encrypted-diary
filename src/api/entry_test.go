@@ -24,68 +24,6 @@ type getEntryResponse struct {
 	Entry database.Entry `json:"entry"`
 }
 
-func TestDeleteAbstract(t *testing.T) {
-	assert := asserthelper.New(t)
-
-	user, _ := SetupUsers()
-
-	entry := database.Entry{
-		PartialEntry: database.PartialEntry{
-			Content: "Entry content",
-			Title:   "Title",
-		},
-		UserID: user.ID,
-	}
-	err := database.Insert(&entry)
-
-
-	// assert works on entry
-	context, recorder := BuildEchoContext(nil, echo.MIMEApplicationJSON)
-
-	context.SetParamNames("id")
-	context.SetParamValues(strconv.Itoa(int(entry.ID)))
-
-	emptyEntry := database.Entry{}
-	err = DeleteAbstract(context, &emptyEntry)
-
-	assert.Nil(err)
-	assert.Equal(http.StatusOK, recorder.Code)
-
-	var resultEntry database.Entry
-	result := database.GetDB().Where("ID = ?", entry.ID).First(&resultEntry)
-	assert.Equal(true, result.RecordNotFound())
-}
-
-func TestDeleteAbstractLabel(t *testing.T) {
-	assert := asserthelper.New(t)
-
-	user, _ := SetupUsers()
-
-	label := database.Label{
-		PartialLabel: database.PartialLabel{Name:"label", Color:"#FFFFFF"},
-		UserID:       user.ID,
-		HasAvatar:    false,
-	}
-	err := database.Insert(&label)
-	assert.Nil(err)
-
-	// assert works on label also
-	context, recorder := BuildEchoContext(nil, echo.MIMEApplicationJSON)
-
-	context.SetParamNames("id")
-	context.SetParamValues(strconv.Itoa(int(label.ID)))
-
-	emptyLabel := database.Label{}
-	err = DeleteAbstract(context, &emptyLabel)
-
-	assert.Nil(err)
-	assert.Equal(http.StatusOK, recorder.Code)
-
-	var resultLabel database.Label
-	result := database.GetDB().Where("ID = ?", label.ID).First(&resultLabel)
-	assert.Equal(true, result.RecordNotFound())
-}
-
 func TestGetEntry(t *testing.T) {
 	assert := asserthelper.New(t)
 

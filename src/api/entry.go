@@ -66,10 +66,8 @@ func GetEntries(c echo.Context) error {
 		Find(&entries).
 		Error
 
-
 	if err != nil {
-		sentry.CaptureException(err)
-		return c.NoContent(http.StatusInternalServerError)
+		return InternalError(c, err)
 	}
 
 	type Data struct {
@@ -96,8 +94,7 @@ func GetEntries(c echo.Context) error {
 	
 	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page), database.GetDB().Where("user_id = ?", user.ID))
 	if err != nil {
-		sentry.CaptureException(err)
-		return c.NoContent(http.StatusInternalServerError)
+		return InternalError(c, err)
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries, "pagination": pagination})
@@ -173,19 +170,6 @@ func GetEntry(context echo.Context) error {
 		url := <-chUrl
 		entry.Labels[url.labelIdx].AvatarUrl = url.URL
 	}
-
-/*	for idx, label := range  entry.Labels {
-		if label.HasAvatar {
-			access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-			if err != nil {
-				sentry.CaptureException(err)
-			} else {
-				entry.Labels[idx].AvatarUrl = access.URL
-			}
-		}
-	}*/
-
-
 
 	return context.JSON(http.StatusOK, ret)
 }
@@ -284,34 +268,6 @@ func EditEntry(context echo.Context) error {
 	}
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"entry": builtEntry})
-}
-
-/*
-	Abstract implementation for an http call DELETE /resource/:id
-	Expect the resource to be associated to the user with the foreign key user_id
- */
-func DeleteAbstract(context echo.Context, m database.Model) error {
-	var user database.User = context.Get("user").(database.User)
-
-	id, err := strconv.Atoi(context.Param("id"))
-	if err != nil {
-		return context.String(http.StatusBadRequest, "Bad route parameter")
-	}
-
-	result := database.GetDB().
-		Where("ID = ?", id).
-		Where("user_id = ?", user.ID).
-		First(m)
-	if result.RecordNotFound() {
-		return context.NoContent(http.StatusNotFound)
-	} else if result.Error != nil {
-		return InternalError(context, result.Error)
-	}
-	err = m.Delete()
-	if err != nil {
-		return InternalError(context, result.Error)
-	}
-	return context.NoContent(http.StatusOK)
 }
 
 func DeleteEntry(context echo.Context) error {
