@@ -54,6 +54,9 @@ func sanitizeParsedBody(parsedBody *LoginBody) {
 	}
 }
 
+// Add a user to claims without otp secret and password.
+// Expects a duration in nanoseconds
+// Could implement a key rotation system
 func BuildJwtToken(user database.User, sessionDuration time.Duration, secret []byte) string {
 	user.Password = ""
 	user.OTPSecret = ""

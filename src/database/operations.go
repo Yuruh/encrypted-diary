@@ -8,6 +8,7 @@ type Model interface {
 	Validate() error
 	Update() error
 	Create() error
+	Delete() error
 }
 
 func Insert(m Model) error {

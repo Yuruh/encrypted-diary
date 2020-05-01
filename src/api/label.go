@@ -209,26 +209,7 @@ func EditLabel(context echo.Context) error {
 	return context.JSON(http.StatusOK, map[string]interface{}{"label": label})
 }
 
-// todo Only the type change from DeleteEntry, must be refactored somehow
 func DeleteLabel(context echo.Context) error {
-	var user database.User = context.Get("user").(database.User)
-
-	id, err := strconv.Atoi(context.Param("id"))
-	if err != nil {
-		return context.String(http.StatusBadRequest, "Bad route parameter")
-	}
-	var label database.Label
-	result := database.GetDB().
-		Where("ID = ?", id).
-		Where("user_id = ?", user.ID).
-		First(&label)
-	if result.RecordNotFound() {
-		return context.String(http.StatusNotFound, "Entry not found")
-	}
-	result = database.GetDB().Delete(&label)
-	if result.Error != nil {
-		fmt.Println(result.Error.Error())
-		return context.NoContent(http.StatusInternalServerError)
-	}
-	return context.NoContent(http.StatusOK)
+	label := database.Label{}
+	return DeleteAbstract(context, &label)
 }

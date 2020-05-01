@@ -103,6 +103,12 @@ func GetEntries(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries, "pagination": pagination})
 }
 
+/*
+	Returns a specific entry and the next / prev ones.
+
+	We may want that the prev and next fit search criteria,
+	in which case they should be sent here with the same format as in GetEntries
+ */
 func GetEntry(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
@@ -280,25 +286,36 @@ func EditEntry(context echo.Context) error {
 	return context.JSON(http.StatusOK, map[string]interface{}{"entry": builtEntry})
 }
 
-func DeleteEntry(context echo.Context) error {
+/*
+	Abstract implementation for an http call DELETE /resource/:id
+	Expect the resource to be associated to the user with the foreign key user_id
+ */
+func DeleteAbstract(context echo.Context, m database.Model) error {
 	var user database.User = context.Get("user").(database.User)
 
 	id, err := strconv.Atoi(context.Param("id"))
 	if err != nil {
 		return context.String(http.StatusBadRequest, "Bad route parameter")
 	}
-	var entry database.Entry
+
 	result := database.GetDB().
 		Where("ID = ?", id).
 		Where("user_id = ?", user.ID).
-		First(&entry)
+		First(m)
 	if result.RecordNotFound() {
-		return context.String(http.StatusNotFound, "Entry not found")
+		return context.NoContent(http.StatusNotFound)
+	} else if result.Error != nil {
+		return InternalError(context, result.Error)
 	}
-	result = database.GetDB().Delete(&entry)
-	if result.Error != nil {
-		fmt.Println(result.Error.Error())
-		return context.NoContent(http.StatusInternalServerError)
+	err = m.Delete()
+	if err != nil {
+		return InternalError(context, result.Error)
 	}
 	return context.NoContent(http.StatusOK)
 }
+
+func DeleteEntry(context echo.Context) error {
+	emptyEntry := database.Entry{}
+	return DeleteAbstract(context, &emptyEntry)
+}
+

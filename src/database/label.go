@@ -43,3 +43,7 @@ func (label Label) Validate() error {
 
 	return validate.Struct(&label)
 }
+
+func (label *Label) Delete() error {
+	return GetDB().Delete(&label).Error
+}
