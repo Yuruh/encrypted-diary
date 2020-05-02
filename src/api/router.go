@@ -124,11 +124,6 @@ func RunHttpServer()  {
 	app.Logger.Fatal(app.Start(":8080"))
 }
 
-// Handler
-func hello(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, World!")
-}
-
 func SendApiSpec(c echo.Context) error {
 	return c.File("openapi.yml")
 }
