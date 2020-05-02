@@ -54,6 +54,9 @@ func sanitizeParsedBody(parsedBody *LoginBody) {
 	}
 }
 
+// Add a user to claims without otp secret and password.
+// Expects a duration in nanoseconds
+// Could implement a key rotation system
 func BuildJwtToken(user database.User, sessionDuration time.Duration, secret []byte) string {
 	user.Password = ""
 	user.OTPSecret = ""
@@ -165,7 +168,7 @@ func Register(context echo.Context) error {
 			return context.NoContent(http.StatusConflict)
 		} else {
 			fmt.Println("Unhandled pq error", err.Code, err.Code.Name())
-			return context.NoContent(http.StatusInternalServerError)
+			return InternalError(context, err)
 		}
 	}
 

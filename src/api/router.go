@@ -88,7 +88,6 @@ func DeclareRoutes(app *echo.Echo) {
 	app.Use(AuthMiddleware())
 
 	// Routes
-	app.GET("/", hello)
 	app.GET("/openapi.yml", SendApiSpec)
 
 	app.GET("/me", GetMe)
@@ -122,11 +121,6 @@ func RunHttpServer()  {
 	DeclareRoutes(app)
 	// Start server
 	app.Logger.Fatal(app.Start(":8080"))
-}
-
-// Handler
-func hello(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, World!")
 }
 
 func SendApiSpec(c echo.Context) error {

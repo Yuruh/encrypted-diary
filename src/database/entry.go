@@ -49,3 +49,7 @@ func (entry Entry) Validate() error {
 
 	return validate.Struct(&entry)
 }
+
+func (entry *Entry) Delete() error {
+	return GetDB().Delete(&entry).Error
+}

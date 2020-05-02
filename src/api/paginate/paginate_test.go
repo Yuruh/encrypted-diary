@@ -2,10 +2,67 @@ package paginate
 
 import (
 	"github.com/Yuruh/encrypted-diary/src/database"
+	"github.com/labstack/echo/v4"
 	asserthelper "github.com/stretchr/testify/assert"
+	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"testing"
 )
+
+func TestGetPaginationParams(t *testing.T) {
+	assert := asserthelper.New(t)
+	e := echo.New()
+	request, _ := http.NewRequest("GET", "/", nil)
+	recorder := httptest.NewRecorder()
+
+	context := e.NewContext(request, recorder)
+
+
+	limit, page, offset, err := GetPaginationParams(21, context)
+	assert.Nil(err)
+	assert.Equal(21, limit)
+	assert.Equal(1, page)
+	assert.Equal(0, offset)
+
+	context.QueryParams().Set("limit", "3")
+	context.QueryParams().Set("page", "1")
+
+	limit, page, offset, err = GetPaginationParams(1, context)
+	assert.Nil(err)
+	assert.Equal(3, limit)
+	assert.Equal(1, page)
+	assert.Equal(0, offset)
+
+	context.QueryParams().Set("page", "2")
+	limit, page, offset, err = GetPaginationParams(1, context)
+	assert.Nil(err)
+	assert.Equal(3, limit)
+	assert.Equal(2, page)
+	assert.Equal(3, offset)
+
+	context.QueryParams().Set("page", "3")
+	limit, page, offset, err = GetPaginationParams(1, context)
+	assert.Nil(err)
+	assert.Equal(3, limit)
+	assert.Equal(3, page)
+	assert.Equal(6, offset)
+
+
+	context.QueryParams().Set("limit", "-1")
+	_, _, _, err = GetPaginationParams(1, context)
+	assert.NotNil(err)
+
+	context.QueryParams().Set("limit", "patate")
+	_, _, _, err = GetPaginationParams(1, context)
+	assert.NotNil(err)
+
+	context.QueryParams().Set("limit", "10")
+	context.QueryParams().Set("page", "patate")
+	_, _, _, err = GetPaginationParams(1, context)
+	assert.NotNil(err)
+
+}
 
 func TestGetPaginationResults(t *testing.T) {
 	assert := asserthelper.New(t)

@@ -40,3 +40,7 @@ func (user User) Validate() error {
 
 	return validate.Struct(&user)
 }
+
+func (user *User) Delete() error {
+	return GetDB().Delete(&user).Error
+}

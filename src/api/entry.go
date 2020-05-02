@@ -7,7 +7,6 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/Yuruh/encrypted-diary/src/object-storage/ovh"
-	"github.com/getsentry/sentry-go"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -66,10 +65,8 @@ func GetEntries(c echo.Context) error {
 		Find(&entries).
 		Error
 
-
 	if err != nil {
-		sentry.CaptureException(err)
-		return c.NoContent(http.StatusInternalServerError)
+		return InternalError(c, err)
 	}
 
 	type Data struct {
@@ -96,13 +93,18 @@ func GetEntries(c echo.Context) error {
 	
 	pagination, err := paginate.GetPaginationResults("entries", uint(limit), uint(page), database.GetDB().Where("user_id = ?", user.ID))
 	if err != nil {
-		sentry.CaptureException(err)
-		return c.NoContent(http.StatusInternalServerError)
+		return InternalError(c, err)
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{"entries": entries, "pagination": pagination})
 }
 
+/*
+	Returns a specific entry and the next / prev ones.
+
+	We may want that the prev and next fit search criteria,
+	in which case they should be sent here with the same format as in GetEntries
+ */
 func GetEntry(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
 
@@ -140,46 +142,7 @@ func GetEntry(context echo.Context) error {
 	}
 	// todo refacto, or as an exercise, build this as a single data base request;
 
-
-	// todo also refacto this, its a C/C of get multiple entries
-	chUrl := make(chan Url)
-	chErr := make(chan error)
-	var results = 0
-		for labelIdx, label := range entry.Labels {
-			if label.HasAvatar == true {
-				results++
-				go func(lIdx int, label database.Label) {
-					url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-					if err != nil {
-						sentry.CaptureException(err)
-						chErr <- err
-					} else {
-						chUrl <- Url{
-							ObjectTempPublicUrl: url,
-							entryIdx:            -1,
-							labelIdx:            lIdx,
-						}
-					}
-				}(labelIdx, label)
-			}
-		}
-	for i := 0; i < results; i++ {
-		url := <-chUrl
-		entry.Labels[url.labelIdx].AvatarUrl = url.URL
-	}
-
-/*	for idx, label := range  entry.Labels {
-		if label.HasAvatar {
-			access, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-			if err != nil {
-				sentry.CaptureException(err)
-			} else {
-				entry.Labels[idx].AvatarUrl = access.URL
-			}
-		}
-	}*/
-
-
+	entry.Labels = PopulateLabelsUrls(entry.Labels)
 
 	return context.JSON(http.StatusOK, ret)
 }
@@ -202,13 +165,15 @@ func AddEntry(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		sentry.CaptureException(err)
-		return context.NoContent(http.StatusInternalServerError)
+		return InternalError(context, err)
 	}
 
 	return context.JSON(http.StatusCreated, map[string]interface{}{"entry": entry})
 }
 
+/*
+	Reads body, and add requested labels in entry
+ */
 func buildEntryFromRequestBody(context echo.Context, user database.User) (database.Entry, string) {
 	body := helpers.ReadBody(context.Request().Body)
 
@@ -273,32 +238,14 @@ func EditEntry(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		sentry.CaptureException(err)
-		return context.NoContent(http.StatusInternalServerError)
+		return InternalError(context, err)
 	}
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"entry": builtEntry})
 }
 
 func DeleteEntry(context echo.Context) error {
-	var user database.User = context.Get("user").(database.User)
-
-	id, err := strconv.Atoi(context.Param("id"))
-	if err != nil {
-		return context.String(http.StatusBadRequest, "Bad route parameter")
-	}
-	var entry database.Entry
-	result := database.GetDB().
-		Where("ID = ?", id).
-		Where("user_id = ?", user.ID).
-		First(&entry)
-	if result.RecordNotFound() {
-		return context.String(http.StatusNotFound, "Entry not found")
-	}
-	result = database.GetDB().Delete(&entry)
-	if result.Error != nil {
-		fmt.Println(result.Error.Error())
-		return context.NoContent(http.StatusInternalServerError)
-	}
-	return context.NoContent(http.StatusOK)
+	emptyEntry := database.Entry{}
+	return DeleteAbstract(context, &emptyEntry)
 }
+

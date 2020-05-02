@@ -23,7 +23,7 @@ func PopulateLabelsUrls(labels []database.Label) []database.Label {
 		if label.HasAvatar == true {
 			results++
 			go func(lIdx int, label database.Label) {
-				url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+				url, err := ovh.GetFileTemporaryAccess(getLabelAvatarFileDescriptor(label), TokenToRemainingDuration())
 				chUrl <- Url{
 					ObjectTempPublicUrl: url,
 					entryIdx:            -1,
@@ -123,23 +123,18 @@ func AddLabel(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		sentry.CaptureException(err)
-		return context.NoContent(http.StatusInternalServerError)
+		return InternalError(context, err)
 	}
 
 	return context.JSON(http.StatusCreated, map[string]interface{}{"label": label})
 }
 
-func LabelAvatarFileDescriptor(label database.Label) string {
+func getLabelAvatarFileDescriptor(label database.Label) string {
 	return "label_" + strconv.Itoa(int(label.ID)) + "_avatar"
 }
 
 func EditLabel(context echo.Context) error {
 	var user database.User = context.Get("user").(database.User)
-
-	fmt.Println(context.FormValue("json"))
-	fmt.Println(context.Request().ContentLength)
-	fmt.Println(context.Request().Header.Get("content-type"))
 
 	id, err := strconv.Atoi(context.Param("id"))
 	if err != nil {
@@ -155,29 +150,23 @@ func EditLabel(context echo.Context) error {
 	}
 
 	form, _ := context.FormParams()
+	fmt.Println(form)
 
 	// avatar is not in forms, apparently because its a file
 	avatar, err := context.FormFile("avatar")
 	if err == nil {
-//		avatar, err := context.FormFile("avatar")
-/*		if err != nil {
-			sentry.CaptureException(err)
-			return context.String(http.StatusBadRequest, "Could not read avatar")
-		}*/
 		file, err := avatar.Open()
 		if err != nil {
 			sentry.CaptureException(err)
 			return context.String(http.StatusBadRequest, "Could not read avatar")
 		}
-		err = ovh.UploadFileToPrivateObjectStorage(LabelAvatarFileDescriptor(label), file)
+		err = ovh.UploadFileToPrivateObjectStorage(getLabelAvatarFileDescriptor(label), file)
 		if err != nil {
-			sentry.CaptureException(err)
-			return context.NoContent(http.StatusInternalServerError)
+			return InternalError(context, err)
 		}
-		url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
+		url, err := ovh.GetFileTemporaryAccess(getLabelAvatarFileDescriptor(label), TokenToRemainingDuration())
 		if err != nil {
-			sentry.CaptureException(err)
-			return context.NoContent(http.StatusInternalServerError)
+			return InternalError(context, err)
 		}
 		label.HasAvatar = true
 		label.AvatarUrl = url.URL
@@ -190,7 +179,6 @@ func EditLabel(context echo.Context) error {
 
 		err = json.Unmarshal([]byte(body), &partialLabel)
 		if err != nil {
-			println(body, err.Error())
 			return context.String(http.StatusBadRequest, "Could not read JSON body")
 		}
 		label.PartialLabel = partialLabel
@@ -202,33 +190,14 @@ func EditLabel(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		sentry.CaptureException(err)
-		return context.NoContent(http.StatusInternalServerError)
+		return InternalError(context, err)
+
 	}
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"label": label})
 }
 
-// todo Only the type change from DeleteEntry, must be refactored somehow
 func DeleteLabel(context echo.Context) error {
-	var user database.User = context.Get("user").(database.User)
-
-	id, err := strconv.Atoi(context.Param("id"))
-	if err != nil {
-		return context.String(http.StatusBadRequest, "Bad route parameter")
-	}
-	var label database.Label
-	result := database.GetDB().
-		Where("ID = ?", id).
-		Where("user_id = ?", user.ID).
-		First(&label)
-	if result.RecordNotFound() {
-		return context.String(http.StatusNotFound, "Entry not found")
-	}
-	result = database.GetDB().Delete(&label)
-	if result.Error != nil {
-		fmt.Println(result.Error.Error())
-		return context.NoContent(http.StatusInternalServerError)
-	}
-	return context.NoContent(http.StatusOK)
+	label := database.Label{}
+	return DeleteAbstract(context, &label)
 }
