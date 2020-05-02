@@ -168,7 +168,7 @@ func Register(context echo.Context) error {
 			return context.NoContent(http.StatusConflict)
 		} else {
 			fmt.Println("Unhandled pq error", err.Code, err.Code.Name())
-			return context.NoContent(http.StatusInternalServerError)
+			return InternalError(context, err)
 		}
 	}
 

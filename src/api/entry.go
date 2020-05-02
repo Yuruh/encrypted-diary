@@ -7,7 +7,6 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/Yuruh/encrypted-diary/src/object-storage/ovh"
-	"github.com/getsentry/sentry-go"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -143,33 +142,7 @@ func GetEntry(context echo.Context) error {
 	}
 	// todo refacto, or as an exercise, build this as a single data base request;
 
-
-	// todo also refacto this, its a C/C of get multiple entries
-	chUrl := make(chan Url)
-	chErr := make(chan error)
-	var results = 0
-		for labelIdx, label := range entry.Labels {
-			if label.HasAvatar == true {
-				results++
-				go func(lIdx int, label database.Label) {
-					url, err := ovh.GetFileTemporaryAccess(LabelAvatarFileDescriptor(label), TokenToRemainingDuration())
-					if err != nil {
-						sentry.CaptureException(err)
-						chErr <- err
-					} else {
-						chUrl <- Url{
-							ObjectTempPublicUrl: url,
-							entryIdx:            -1,
-							labelIdx:            lIdx,
-						}
-					}
-				}(labelIdx, label)
-			}
-		}
-	for i := 0; i < results; i++ {
-		url := <-chUrl
-		entry.Labels[url.labelIdx].AvatarUrl = url.URL
-	}
+	entry.Labels = PopulateLabelsUrls(entry.Labels)
 
 	return context.JSON(http.StatusOK, ret)
 }
@@ -192,13 +165,15 @@ func AddEntry(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		sentry.CaptureException(err)
-		return context.NoContent(http.StatusInternalServerError)
+		return InternalError(context, err)
 	}
 
 	return context.JSON(http.StatusCreated, map[string]interface{}{"entry": entry})
 }
 
+/*
+	Reads body, and add requested labels in entry
+ */
 func buildEntryFromRequestBody(context echo.Context, user database.User) (database.Entry, string) {
 	body := helpers.ReadBody(context.Request().Body)
 
@@ -263,8 +238,7 @@ func EditEntry(context echo.Context) error {
 		return context.String(http.StatusBadRequest, database.BuildValidationErrorMsg(err))
 	}
 	if err != nil {
-		sentry.CaptureException(err)
-		return context.NoContent(http.StatusInternalServerError)
+		return InternalError(context, err)
 	}
 
 	return context.JSON(http.StatusOK, map[string]interface{}{"entry": builtEntry})
