@@ -190,7 +190,7 @@ func TestDeclareRoutes(t *testing.T) {
 	e := echo.New()
 	assert := asserthelper.New(t)
 	DeclareRoutes(e)
-	assert.Equal(17, len(e.Routes()))
+	assert.Equal(16, len(e.Routes()))
 }
 
 func TestRecoverMiddleware(t *testing.T) {

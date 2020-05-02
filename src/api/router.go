@@ -88,7 +88,6 @@ func DeclareRoutes(app *echo.Echo) {
 	app.Use(AuthMiddleware())
 
 	// Routes
-	app.GET("/", hello)
 	app.GET("/openapi.yml", SendApiSpec)
 
 	app.GET("/me", GetMe)

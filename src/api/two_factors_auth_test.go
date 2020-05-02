@@ -72,8 +72,6 @@ func TestRequestGoogleAuthenticatorQRCode(t *testing.T) {
 	user, _ := SetupUsers()
 	context, recorder := BuildEchoContext(nil, echo.MIMEApplicationJSON)
 
-	context.Set("user", user)
-
 	err := RequestGoogleAuthenticatorQRCode(context)
 	assert.Nil(err)
 	assert.Equal(http.StatusOK, recorder.Code)
@@ -84,4 +82,33 @@ func TestRequestGoogleAuthenticatorQRCode(t *testing.T) {
 	var updatedUser database.User
 	database.GetDB().Find(&updatedUser)
 	assert.Greater(5, len(user.OTPSecret))
+}
+
+func TestRequestTwoFactorsToken(t *testing.T) {
+	assert := asserthelper.New(t)
+	SetupUsers()
+	context, recorder := BuildEchoContext(nil, echo.MIMEApplicationJSON)
+
+	err := RequestTwoFactorsToken(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, recorder.Code)
+
+	var response loginResponse
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+	if len(response.Token) < 300 {
+		t.Errorf("Token length incorrect, expected at least %v, got %v", 300, len(response.Token))
+	}
+
+	if parsedToken, _ := jwt.Parse(response.Token, func(token *jwt.Token) (interface{}, error) {
+		return os.Getenv("2FA_TOKEN_SECRET"), nil
+	}); parsedToken != nil {
+		var parsedUser = parsedToken.Claims.(jwt.MapClaims)["user"].(map[string]interface{})
+		assert.Equal(parsedUser["email"], UserHasAccessEmail)
+		assert.Equal(parsedUser["Password"], nil)
+	} else {
+		t.Errorf("Could not decde JWT token")
+	}
+
 }
