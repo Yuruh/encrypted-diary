@@ -29,6 +29,9 @@ func TestUploadFileToPrivateObjectStorage(t *testing.T) {
 
 	err = UploadFileToPrivateObjectStorage("test_file_upload", file)
 	assert.Nil(err)
+
+	err = UploadFileToPrivateObjectStorage("", nil)
+	assert.NotNil(err)
 }
 
 func TestGetFileTemporaryAccess(t *testing.T) {
