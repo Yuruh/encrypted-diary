@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func ensureEnvSet() error {
+func EnsureEnvSet() error {
 	required := []string{
 		"ACCESS_TOKEN_SECRET",
 		"2FA_TOKEN_SECRET",
@@ -27,15 +27,19 @@ func ensureEnvSet() error {
 	return nil
 }
 
-func main() {
+func InitSentry() {
 	log.Println("Launching Sentry ...")
 	err := sentry.Init(sentry.ClientOptions{})
 	if err != nil {
 		log.Fatalf("sentry.Init: %s", err)
 	}
+}
+
+func main() {
+	InitSentry()
 
 	rand.Seed(int64(os.Getpid()) * time.Now().Unix())
-	err = ensureEnvSet()
+	err := EnsureEnvSet()
 	if err != nil {
 		sentry.CaptureException(err)
 		os.Exit(1)
@@ -45,12 +49,5 @@ func main() {
 
 	defer database.GetDB().Close()
 
-//	database.RunMigration()
-
 	api.RunHttpServer()
-}
-
-
-func Dummy() int8 {
-	return 1
 }
