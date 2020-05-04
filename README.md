@@ -7,12 +7,6 @@
 
 A personal diary where every entry is encrypted using the user's password as encryption key.
 
-## Self Host
-
-You may self host this project.
-
-TODO : --> explain dk compose, .env, ovh / postgresql
-
 ## About Encryption
 
 When a user logs in, an encryption key is created using his password and [Password-Based Key Derivation Function 2](https://en.wikipedia.org/wiki/PBKDF2) (PBKDF2). His data is then encrypted / decrypted using [Advanced Encryption Standard](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard) (AES).
@@ -30,6 +24,13 @@ And here's what isn't - *and why*:
 * Entries Title - *For Entry search*
 * Labels Names - *For Entry / Label search*
 * Entries Date - *For Entry search*
+
+## Self Host
+
+You may self host this project.
+
+TODO : --> explain dk compose, .env, ovh / postgresql
+
 
 ## Features
  
@@ -51,7 +52,13 @@ And here's what isn't - *and why*:
 
 ## Contributing
 
-TODO
+### Feedback
+
+If you have a feature request, found a bug, or just want to give your opinion about this project, please open a Github issue ! I'd love to hear your feedback.
+
+### Dev
+
+**todo** Explain steps to set up dev server
 
 ## Resources
 
