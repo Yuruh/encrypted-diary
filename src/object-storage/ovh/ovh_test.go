@@ -34,6 +34,12 @@ func TestUploadFileToPrivateObjectStorage(t *testing.T) {
 	assert.NotNil(err)
 }
 
+func BenchmarkGetFileTemporaryAccess(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		_, _ = GetFileTemporaryAccess("test_file_upload", time.Second*2)
+	}
+}
+
 func TestGetFileTemporaryAccess(t *testing.T) {
 	assert := asserthelper.New(t)
 
@@ -52,6 +58,7 @@ func TestGetFileTemporaryAccess(t *testing.T) {
 
 	client := &http.Client{}
 	res, err := client.Do(req)
+
 	assert.Nil(err)
 	assert.Equal(http.StatusOK, res.StatusCode)
 

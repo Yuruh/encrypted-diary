@@ -1,6 +1,9 @@
 package ovh
 
 import (
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
@@ -8,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -24,6 +28,16 @@ type ObjectTempPublicUrl struct {
 	URL string `json:"getURL"`
 	ExpirationDate string `json:"expirationDate"`
 }
+/*
+   id: 120996
+   username: "jhWHTxZQG5Jy"
+   creationDate: "2020-05-04T16:01:08.769+02:00"
+   description: "Dev openstack user"
+   status: "creating"
+   roles: [ ]
+   password: "hCpFc6QHPKuyC4FSy3rc8HCXs2ZmCcFW"
+
+ */
 
 func getStorageAccess() (StorageAccess, error) {
 	// Uses env variable for client configuration
@@ -68,7 +82,42 @@ func UploadFileToPrivateObjectStorage(fileDescriptor string, file io.Reader) err
 	return nil
 }
 
+
+// Adapted from https://docs.openstack.org/swift/latest/api/temporary_url_middleware.html#hmac-sha1-signature-for-temporary-urls
+func generateTempUrlSig(fileDescriptor string, duration time.Duration) ObjectTempPublicUrl {
+	method := "GET"
+
+	expires := time.Now().Add(duration)
+//	durationSec := duration / time.Second
+	expiresSec := strconv.Itoa(int(expires.Unix()))
+	path := os.Getenv("OVH_OPENSTACK_CONTAINER_PATH") + fileDescriptor
+	key := os.Getenv("OVH_OPENSTACK_TEMP_URL_KEY")
+	hmacBody := fmt.Sprintf("%s\n%s\n%s", method, expiresSec, path)
+	hash := hmac.New(sha1.New, []byte(key))
+	hash.Write([]byte(hmacBody))
+	signature := hex.EncodeToString(hash.Sum(nil))
+
+	return ObjectTempPublicUrl{
+		URL: os.Getenv("OVH_OPENSTACK_CONTAINER_URL") + fileDescriptor +
+			"?temp_url_expires=" + expiresSec + "&temp_url_sig=" + signature,
+		ExpirationDate: expires.Format(time.RFC3339),
+	}
+}
+
+
 func GetFileTemporaryAccess(fileDescriptor string, duration time.Duration) (ObjectTempPublicUrl, error) {
+
+
+	/*
+	 *	The version below uses OVH Api call to generate signature. This is the easiest method and potentially more scalable if openstack api changes
+	 *	But it is pretty slow: 0.35 seconds according to benchmark
+     */
+	/*
+	 * Indeed, after manual setup, we go from ~350 ms to ~0.01 ms
+	 *
+	 *
+	 */
+/*
 	client, err := ovh.NewDefaultClient()
 	if err != nil {
 		return ObjectTempPublicUrl{}, err
@@ -76,8 +125,6 @@ func GetFileTemporaryAccess(fileDescriptor string, duration time.Duration) (Obje
 
 	var url ObjectTempPublicUrl
 
-	// I could speed up the process by writing the signature myself, instead of asking ovh to do it.
-	// https://docs.openstack.org/swift/latest/api/temporary_url_middleware.html#hmac-sha1-signature-for-temporary-urls
 	err = client.Post("/cloud/project/" + os.Getenv("OVH_SERVICE_NAME") + "/storage/" +
 		os.Getenv("OVH_CONTAINER_ID") + "/publicUrl", map[string]interface{}{
 		"expirationDate": time.Now().Add(duration).Format(time.RFC3339),
@@ -86,8 +133,10 @@ func GetFileTemporaryAccess(fileDescriptor string, duration time.Duration) (Obje
 
 	if err != nil {
 		return ObjectTempPublicUrl{}, err
-	}
-	return url, nil
+	}*/
+//	return url, nil
+
+	return generateTempUrlSig(fileDescriptor, duration), nil
 }
 
 // Only needed to generate consumer key, commented for now
