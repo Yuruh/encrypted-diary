@@ -28,16 +28,6 @@ type ObjectTempPublicUrl struct {
 	URL string `json:"getURL"`
 	ExpirationDate string `json:"expirationDate"`
 }
-/*
-   id: 120996
-   username: "jhWHTxZQG5Jy"
-   creationDate: "2020-05-04T16:01:08.769+02:00"
-   description: "Dev openstack user"
-   status: "creating"
-   roles: [ ]
-   password: "hCpFc6QHPKuyC4FSy3rc8HCXs2ZmCcFW"
-
- */
 
 func getStorageAccess() (StorageAccess, error) {
 	// Uses env variable for client configuration
