@@ -8,6 +8,7 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/Yuruh/encrypted-diary/src/object-storage/ovh"
 	"github.com/go-playground/validator/v10"
+	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
@@ -44,7 +45,30 @@ type Url struct {
 	error
 }
 
-// For user queries: can include vs must include
+// For now, multiple labels are included as OR, should be AND
+
+func provisionLabelsIdsInQuery(context echo.Context, sqlBuilder *gorm.DB) (*gorm.DB, error) {
+	includedLabels := context.QueryParam("label_ids")
+
+	var included = make([]int, 0)
+	if includedLabels != "" {
+		err := json.Unmarshal([]byte(includedLabels), &included)
+		if err != nil {
+			return nil, context.String(http.StatusBadRequest, "Bad query parameters")
+		}
+	}
+	/*
+	 * SELECT id, title, updated_at, created_at, LENGTH(title) from "entries"
+	 * INNER JOIN entry_labels ON "entry_labels"."entry_id" = "entries"."id" WHERE "label_id" IN (76, 77) GROUP BY id
+	 */
+
+	if len(included) > 0 {
+		return sqlBuilder.Joins("INNER JOIN entry_labels ON entry_labels.entry_id = entries.id").
+			Where("label_id IN (?)", included), nil
+	}
+	return sqlBuilder, nil
+}
+
 func GetEntries(c echo.Context) error {
 	var user database.User = c.Get("user").(database.User)
 
@@ -54,16 +78,21 @@ func GetEntries(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Bad query parameters")
 	}
 
-	var entries []database.Entry
-	err = database.GetDB().
+	sqlBuilder :=  database.GetDB().
 		Preload("Labels").
-		Where("user_id = ?", user.ID).
-		Select("id, title, updated_at, created_at, LENGTH(title)").
+		Where("user_id = ?", user.ID)
+
+	sqlBuilder, err = provisionLabelsIdsInQuery(c, sqlBuilder)
+	if err != nil {
+		return err
+	}
+
+	var entries []database.Entry
+	err = sqlBuilder.Select("id, title, updated_at, created_at, LENGTH(title)").
 		Order("created_at desc").
 		Limit(limit).
 		Offset(offset).
-		Find(&entries).
-		Error
+		Find(&entries).Error
 
 	if err != nil {
 		return InternalError(c, err)
@@ -126,21 +155,28 @@ func GetEntry(context echo.Context) error {
 	result = database.GetDB().
 		Where("user_id = ?", user.ID).
 		Order("created_at asc").
-		Where("created_at > ?", entry.CreatedAt).
-		First(&nextEntry)
+		Where("created_at > ?", entry.CreatedAt)
+	result, err = provisionLabelsIdsInQuery(context, result)
+	if err != nil {
+		return err
+	}
+	result = result.First(&nextEntry)
 	if !result.RecordNotFound() {
-		ret["next_entry_id"] = nextEntry.ID
+		ret["next_entry"] = nextEntry
 	}
 	var prevEntry database.Entry
 	result = database.GetDB().
 		Where("user_id = ?", user.ID).
 		Order("created_at desc").
-		Where("created_at < ?", entry.CreatedAt).
-		First(&prevEntry)
-	if !result.RecordNotFound() {
-		ret["prev_entry_id"] = prevEntry.ID
+		Where("created_at < ?", entry.CreatedAt)
+	result, err = provisionLabelsIdsInQuery(context, result)
+	if err != nil {
+		return err
 	}
-	// todo refacto, or as an exercise, build this as a single data base request;
+	result = result.First(&prevEntry)
+	if !result.RecordNotFound() {
+		ret["prev_entry"] = prevEntry
+	}
 
 	entry.Labels = PopulateLabelsUrls(entry.Labels)
 

@@ -59,6 +59,55 @@ func TestGetEntry(t *testing.T) {
 	assert.Equal("An awesome title", response.Entry.Title)
 }
 
+func TestGetEntriesThatIncludesLabel(t *testing.T) {
+	assert := asserthelper.New(t)
+
+	database.GetDB().Unscoped().Delete(database.Entry{})
+	user, _ := SetupUsers()
+
+	var label database.Label = database.Label{
+		PartialLabel: database.PartialLabel{
+			Name:  "Work",
+			Color: "#FF0000",
+		},
+		UserID:       user.ID,
+	}
+	database.GetDB().Create(&label)
+	entryWithLabel := database.Entry{
+		PartialEntry: database.PartialEntry{
+			Content: "allo",
+			Title:   "Got label",
+		},
+		UserID:user.ID,
+		Labels: []database.Label{label},
+	}
+	_ = database.Insert(&entryWithLabel)
+	entryWithoutLabel := database.Entry{
+		PartialEntry: database.PartialEntry{
+			Content: "allo",
+			Title:   "Got no label",
+		},
+		UserID:user.ID,
+	}
+	_ = database.Insert(&entryWithoutLabel)
+
+
+	context, recorder := BuildEchoContext(nil, echo.MIMEApplicationJSON)
+	context.QueryParams().Set("label_ids", "[" + strconv.Itoa(int(label.ID)) + "]")
+	err := GetEntries(context)
+	assert.Nil(err)
+	assert.Equal(http.StatusOK, recorder.Code)
+
+	var response getEntriesResponse
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	if err != nil {
+		t.Error("Could not read response")
+	}
+	assert.Equal(1, len(response.Entries))
+	assert.Equal("Got label", response.Entries[0].Title)
+
+}
+
 func TestGetEntries(t *testing.T) {
 	database.GetDB().Unscoped().Delete(database.Entry{})
 	SetupUsers()
@@ -104,14 +153,15 @@ func caseNoLimit(t *testing.T) {
 	var response getEntriesResponse
 	err = json.Unmarshal(recorder.Body.Bytes(), &response)
 	assert.Nil(err)
-	assert.Equal(10, len(response.Entries))
+	if assert.Equal(10, len(response.Entries)) {
 
-	// By design we don't fill content
-	assert.Equal("", response.Entries[3].Content)
-
-	if assert.NotNil(response.Entries[0].Labels) {
-		assert.Equal("Work", response.Entries[0].Labels[0].Name)
+		// By design we don't fill content
+		assert.Equal("", response.Entries[3].Content)
+		if assert.NotNil(response.Entries[0].Labels) {
+			assert.Equal("Work", response.Entries[0].Labels[0].Name)
+		}
 	}
+
 }
 
 func caseBadLimit(t *testing.T) {
@@ -194,20 +244,21 @@ func caseLimitOk(t *testing.T) {
 	if err != nil {
 		t.Error("Could not read response")
 	}
-	assert.Equal(3, len(response.Entries))
+	if assert.Equal(3, len(response.Entries)) {
 
-	assert.Equal("Entry 7", response.Entries[2].Title)
+		assert.Equal("Entry 7", response.Entries[2].Title)
 
-	// 13 entries are created, we request page 2 with limit 3
-	if assert.NotNil(response.Pagination) {
-		assert.Equal(uint(2), response.Pagination.Page)
-		assert.Equal(uint(3), response.Pagination.Limit)
-		assert.Equal(uint(3), response.Pagination.NextPage)
-		assert.Equal(uint(1), response.Pagination.PrevPage)
-		assert.Equal(uint(13), response.Pagination.TotalMatches)
-		assert.Equal(true, response.Pagination.HasNextPage)
-		assert.Equal(true, response.Pagination.HasPrevPage)
-		assert.Equal(uint(5), response.Pagination.TotalPages)
+		// 13 entries are created, we request page 2 with limit 3
+		if assert.NotNil(response.Pagination) {
+			assert.Equal(uint(2), response.Pagination.Page)
+			assert.Equal(uint(3), response.Pagination.Limit)
+			assert.Equal(uint(3), response.Pagination.NextPage)
+			assert.Equal(uint(1), response.Pagination.PrevPage)
+			assert.Equal(uint(13), response.Pagination.TotalMatches)
+			assert.Equal(true, response.Pagination.HasNextPage)
+			assert.Equal(true, response.Pagination.HasPrevPage)
+			assert.Equal(uint(5), response.Pagination.TotalPages)
+		}
 	}
 }
 
