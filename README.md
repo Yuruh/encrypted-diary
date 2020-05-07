@@ -1,7 +1,9 @@
+[![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](http://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.com/Yuruh/encrypted-diary.svg?branch=master)](https://travis-ci.com/Yuruh/encrypted-diary)
 [![Version](https://img.shields.io/github/v/tag/yuruh/encrypted-diary)](https://github.com/Yuruh/encrypted-diary/releases)
 [![codecov](https://codecov.io/gh/Yuruh/encrypted-diary/branch/master/graph/badge.svg)](https://codecov.io/gh/Yuruh/encrypted-diary)
-
+[![pulls](https://img.shields.io/docker/pulls/yuruh/encrypted-diary?color=blueviolet)](https://hub.docker.com/r/yuruh/encrypted-diary)
+[![size](https://img.shields.io/docker/image-size/yuruh/encrypted-diary?color=blueviolet)](https://hub.docker.com/r/yuruh/encrypted-diary)
 
 # Encrypted diary
 
