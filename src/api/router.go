@@ -5,6 +5,8 @@ import (
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/Yuruh/encrypted-diary/src/helpers"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/didip/tollbooth"
+	"github.com/didip/tollbooth/limiter"
 	"github.com/getsentry/sentry-go"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -33,6 +35,33 @@ func AuthMiddleware() echo.MiddlewareFunc {
 			context.Set("user", context.Get("token").(*jwt.Token).Claims.(*TokenClaims).User)
 		},
 	})
+}
+
+func BuildRateLimiterConf() *limiter.Limiter {
+	// create a limiter with expirable token buckets
+	// create a 3 request/second limiter and
+	// every token bucket in it will expire 10 minutes after it was initially set.
+	lmt := tollbooth.NewLimiter(3, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Minute * 10})
+
+	// Places to look for IP Addr
+	lmt.SetIPLookups([]string{"X-Forwarded-For", "X-Real-IP", "RemoteAddr"})
+
+	return lmt
+}
+
+// Middleware to limit the number of request an IP can make during a time window
+func RateLimiterMiddleware(limiter *limiter.Limiter) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return echo.HandlerFunc(func(c echo.Context) error {
+			fmt.Println(c.Request().Header)
+			httpError := tollbooth.LimitByRequest(limiter, c.Response(), c.Request())
+			if httpError != nil {
+				fmt.Println("http errooor")
+				return c.String(httpError.StatusCode, httpError.Message)
+			}
+			return next(c)
+		})
+	}
 }
 
 // Middleware to recover from panic and send infos to sentry
@@ -78,6 +107,7 @@ func DeclareRoutes(app *echo.Echo) {
 	app.Use(middleware.Logger())
 	app.Use(middleware.CORS())
 	app.Use(middleware.BodyLimit("1G"))
+	app.Use(RateLimiterMiddleware(BuildRateLimiterConf()))
 
 	app.POST("/login", Login, RequireBody)
 	app.POST("/register", Register, RequireBody)
@@ -86,7 +116,6 @@ func DeclareRoutes(app *echo.Echo) {
 	// According to https://echo.labstack.com/middleware, "Middleware registered using Echo#Use() is only executed for paths which are registered after Echo#Use() has been called."
 	// But it doesn't behave that way so for now we'll skip specific routes
 	app.Use(AuthMiddleware())
-
 	// Routes
 	app.GET("/openapi.yml", SendApiSpec)
 
