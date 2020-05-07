@@ -39,6 +39,32 @@ func TestSendApiSpec(t *testing.T) {
 	}
 }
 
+func TestRateLimiterMiddleware(t *testing.T) {
+	assert := asserthelper.New(t)
+	context, recorder := BuildEchoContext(nil, echo.MIMEApplicationJSON)
+	context.Request().Header.Set("X-Forwarded-For", "123.213.213.132")
+
+
+	var limit = RateLimiterMiddleware(BuildRateLimiterConf())(echo.NotFoundHandler)
+	err := limit(context)
+	if assert.NotNil(err) {
+		// Not found as "next" is called but no route follows
+		assert.Equal(http.StatusNotFound, err.(*echo.HTTPError).Code)
+	}
+	err = limit(context)
+	if assert.NotNil(err) {
+		assert.Equal(http.StatusNotFound, err.(*echo.HTTPError).Code)
+	}
+	err = limit(context)
+	if assert.Nil(err) {
+		assert.Equal(http.StatusTooManyRequests, recorder.Code)
+	}
+	err = limit(context)
+	if assert.Nil(err) {
+		assert.Equal(http.StatusTooManyRequests, recorder.Code)
+	}
+}
+
 func TestAuthMiddleware(t *testing.T) {
 	t.Run("No token", caseNoToken)
 	t.Run("Bad token", caseBadToken)
