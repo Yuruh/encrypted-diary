@@ -56,12 +56,21 @@ func TestRateLimiterMiddleware(t *testing.T) {
 		assert.Equal(http.StatusNotFound, err.(*echo.HTTPError).Code)
 	}
 	err = limit(context)
+	if assert.NotNil(err) {
+		assert.Equal(http.StatusNotFound, err.(*echo.HTTPError).Code)
+	}
+	err = limit(context)
 	if assert.Nil(err) {
 		assert.Equal(http.StatusTooManyRequests, recorder.Code)
 	}
 	err = limit(context)
 	if assert.Nil(err) {
 		assert.Equal(http.StatusTooManyRequests, recorder.Code)
+	}
+	time.Sleep(time.Second)
+	err = limit(context)
+	if assert.NotNil(err) {
+		assert.Equal(http.StatusNotFound, err.(*echo.HTTPError).Code)
 	}
 }
 

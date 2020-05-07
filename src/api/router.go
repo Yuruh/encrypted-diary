@@ -39,9 +39,9 @@ func AuthMiddleware() echo.MiddlewareFunc {
 
 func BuildRateLimiterConf() *limiter.Limiter {
 	// create a limiter with expirable token buckets
-	// create a 2 request/second limiter and
+	// create a 3 request/second limiter and
 	// every token bucket in it will expire 10 minutes after it was initially set.
-	lmt := tollbooth.NewLimiter(2, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Minute * 10})
+	lmt := tollbooth.NewLimiter(3, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Minute * 10})
 
 	// Places to look for IP Addr
 	lmt.SetIPLookups([]string{"X-Forwarded-For", "X-Real-IP", "RemoteAddr"})
