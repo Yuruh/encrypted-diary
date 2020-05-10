@@ -3,8 +3,9 @@
 
 version: "3.5"
 services:
-  diary-postgres:
+  postgres:
     image: "postgres:12.1"
+    container_name: postgres
     ports:
       - 5432:5432
     environment:
@@ -21,9 +22,10 @@ services:
       - 1500:80
     volumes:
       - pgadmin-data:/var/lib/pgadmin
-  diary-api:
+  api:
     environment:
       - DB_HOST=postgres
+    container_name: api
     build: "."
     volumes:
       - ./src:/usr/src/diary/src
@@ -31,10 +33,11 @@ services:
     ports:
       - 8080:8080
     depends_on:
-      - diary-postgres
+      - postgres
     env_file:
       - .env
-  diary-doc:
+  doc:
+    container_name: doc
     image: "redocly/redoc"
     environment:
       - PAGE_TITLE=API Doc - Encrypted Diary

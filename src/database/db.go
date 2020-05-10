@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"log"
@@ -45,8 +46,11 @@ func Connect() *gorm.DB {
 	var uri = "user=" + os.Getenv("DIARY_DB_USER") +
 		" password=" + os.Getenv("DIARY_DB_PWD") +
 		" host=" + os.Getenv("DB_HOST") +
-		" dbname=" + os.Getenv("DIARY_DB_NAME") +
 		" sslmode=disable"
+
+	if os.Getenv("DIARY_DB_NAME") != "" {
+		uri += " dbname=" + os.Getenv("DIARY_DB_NAME")
+	}
 
 	db, err := gorm.Open("postgres", uri)
 	if err != nil {

@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: test_pwd
   diary-api:
     environment:
-      - DB_HOST=postgres
+      - DB_HOST=diary-postgres
       - DIARY_DB_USER=test_user
       - DIARY_DB_PWD=test_pwd
       - ACCESS_TOKEN_SECRET=gfvbjhgyfgvhbnj
