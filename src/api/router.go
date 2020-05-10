@@ -53,7 +53,6 @@ func BuildRateLimiterConf() *limiter.Limiter {
 func RateLimiterMiddleware(limiter *limiter.Limiter) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return echo.HandlerFunc(func(c echo.Context) error {
-			fmt.Println(c.Request().Header)
 			httpError := tollbooth.LimitByRequest(limiter, c.Response(), c.Request())
 			if httpError != nil {
 				fmt.Println("http errooor")

@@ -9,5 +9,7 @@ import (
 func GetMe(c echo.Context) error {
 	var user database.User = c.Get("user").(database.User)
 
-	return c.JSON(http.StatusOK, map[string]interface{}{"user": user})
+	var foundUser database.User
+	database.GetDB().Where("id = ?", user.ID).First(&foundUser)
+	return c.JSON(http.StatusOK, map[string]interface{}{"user": foundUser})
 }

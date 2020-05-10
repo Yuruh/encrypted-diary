@@ -40,11 +40,13 @@ func GetDB() *gorm.DB {
 	return instance
 }
 
-
 func Connect() *gorm.DB {
 	log.Println("Connecting to database...")
 	var uri = "user=" + os.Getenv("DIARY_DB_USER") +
-		" host=diary-postgres password=" + os.Getenv("DIARY_DB_PWD") + " sslmode=disable"
+		" password=" + os.Getenv("DIARY_DB_PWD") +
+		" host=" + os.Getenv("DB_HOST") +
+		" dbname=" + os.Getenv("DIARY_DB_NAME") +
+		" sslmode=disable"
 
 	db, err := gorm.Open("postgres", uri)
 	if err != nil {
