@@ -8,8 +8,14 @@ type User struct {
 	BaseModel
 	Email       string  `gorm:"type:varchar(100);unique_index" json:"email" validate:"email,required"`
 	Password	string  `gorm:"not null" json:"-"`
+
+	// todo find out if i can remove this
 	Entries		[]Entry	`json:"-"`
 	Labels		[]Label `json:"-"`
+
+
+	TwoFactorsCookies []TwoFactorsCookie `json:"two_factors_cookies"`
+
 
 	// Stored encrypted
 	OTPSecret	string 	`json:"-"`

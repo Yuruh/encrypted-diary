@@ -31,7 +31,7 @@ func GetDB() *gorm.DB {
 	if initialized == 0 {
 		instance = Connect()
 		instance.LogMode(true)
-		instance.Set("gorm:auto_preload", true)
+//		instance.Set("gorm:auto_preload", true)
 
 		atomic.StoreUint32(&initialized, 1)
 		RunMigration()
@@ -70,7 +70,5 @@ func RunMigration() {
 	instance.AutoMigrate(&User{})
 	instance.AutoMigrate(&Entry{})
 	instance.AutoMigrate(&Label{})
-
-	//	instance.Create(&models.User{Email: "toto@address.com"})
-	//	db.Create(&models.User{Email: "tzata@tata.com", Password:"azer"})
+	instance.AutoMigrate(&TwoFactorsCookie{})
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/getsentry/sentry-go"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"io/ioutil"
 	"log"
@@ -29,39 +30,6 @@ func RequestGoogleAuthenticatorQRCode(context echo.Context) error {
 	if err != nil {
 		return InternalError(context, err)
 	}
-
-	fmt.Println("otp secret in request", user.OTPSecret)
-
-
-	/*
-			This code blocks works but it seems bad practice to send multipart to a client (uncommon behaviour)
-
-
-			var b bytes.Buffer
-			w := multipart.NewWriter(&b)
-			var fw io.Writer
-
-
-			// Instead of using CreateFormField we set by hand because we need to set the content-type
-		h := make(textproto.MIMEHeader)
-		h.Set("Content-Disposition",
-			fmt.Sprintf(`form-data; name="%s"`, "token"))
-		h.Set("Content-Type", "text/plain")
-		fw, _ = w.CreatePart(h)
-		_, err = io.Copy(fw, strings.NewReader("the token content"))
-		if err != nil {
-			return InternalError(context, err)
-		}
-
-		fw, _ = w.CreateFormFile("qr", "otp-qr-code.png")
-		_, err = io.Copy(fw, bytes.NewReader(png))
-		if err != nil {
-			return InternalError(context, err)
-		}
-
-		w.Close()
-
-		return context.Blob(http.StatusOK, w.FormDataContentType(), b.Bytes())*/
 
 	return context.Blob(http.StatusOK, "image/png", png)
 }
@@ -111,6 +79,7 @@ func ValidateJWTToken(token string, secret []byte) (jwt.MapClaims, error) {
 type OTPCodeBody struct {
 	Passcode string `json:"passcode" validate:"required,len=6,numeric"`
 	Token string `json:"token" validate:"required"`
+	KeepActive bool `json:"keep_active"`
 }
 
 func ValidateOTPCode(context echo.Context) error {
@@ -163,9 +132,43 @@ func ValidateOTPCode(context echo.Context) error {
 		// Retrieve duration in nanoseconds from token
 		tokenTTL := time.Duration(claims["exp"].(float64)) * time.Second - time.Duration(time.Now().UnixNano())
 		ss := BuildJwtToken(user, tokenTTL, []byte(os.Getenv("ACCESS_TOKEN_SECRET")))
+		if parsedBody.KeepActive {
+			activeTFACookie(context, user.ID)
+		}
 		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss})
 	} else {
 		return context.String(http.StatusBadRequest, "Code refused")
 	}
 }
 
+func activeTFACookie(context echo.Context, userId uint) {
+	generatedUuid := uuid.New().String()
+	expires := time.Now().Add(24 * time.Hour * 14) // 2 weeks
+	agent := "Unknown"
+	if context.Request().Header.Get("user-agent") != "" {
+		agent = context.Request().Header.Get("user-agent")
+	}
+
+	cookie := new(http.Cookie)
+	cookie.Name = "tfa-active"
+	cookie.Value = generatedUuid
+	cookie.Secure = true
+	cookie.HttpOnly = true
+	cookie.Expires = time.Now().Add(24 * time.Hour * 14) // 2 weeks
+
+	context.SetCookie(cookie)
+
+	dbCookie := database.TwoFactorsCookie{
+		Uuid:      generatedUuid,
+		IpAddr:    context.RealIP(),
+		UserAgent: agent,
+		Expires:   expires,
+		UserID:	   userId,
+		LastUsed:  time.Now(),
+	}
+	err := database.Insert(&dbCookie)
+	if err != nil {
+		fmt.Println(err.Error())
+		sentry.CaptureException(err)
+	}
+}
