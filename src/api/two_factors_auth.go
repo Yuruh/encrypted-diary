@@ -152,7 +152,13 @@ func activeTFACookie(context echo.Context, userId uint) {
 	cookie := new(http.Cookie)
 	cookie.Name = "tfa-active"
 	cookie.Value = generatedUuid
-	cookie.Secure = true
+
+	if os.Getenv("DOMAIN") != "" {
+		cookie.Domain = os.Getenv("DOMAIN")
+		cookie.Secure = true
+	}
+
+	cookie.Path = "/login"
 	cookie.HttpOnly = true
 	cookie.Expires = time.Now().Add(24 * time.Hour * 14) // 2 weeks
 

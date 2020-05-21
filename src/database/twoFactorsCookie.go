@@ -13,10 +13,10 @@ type TwoFactorsCookie struct {
 	BaseModel
 	Uuid		string `json:"uuid" validate:"uuid4" gorm:"type:varchar(36)"`
 	IpAddr		string `json:"ip_addr" validate:"ipv4" gorm:"type:varchar(12)"`
-	UserAgent	string `json:"user_agent" validate:"alphanumunicode" gorm:"type:varchar(200)"`
+	UserAgent	string `json:"user_agent" validate:"max=200" gorm:"type:varchar(200)"`
 	Expires		time.Time `json:"expires"`
 	LastUsed	time.Time `json:"last_used"`
-	UserID 		uint
+	UserID 		uint `json:"-"`
 }
 
 func (t TwoFactorsCookie) Validate() error {
