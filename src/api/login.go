@@ -111,6 +111,7 @@ func Login(context echo.Context) error {
 					Where("uuid = ?", cookie.Value).
 					Find(&active)
 				if !result.RecordNotFound() {
+					// Todo also check IP addr (we want to ask again if the ip addr changed)
 					if time.Now().UnixNano() > active.Expires.UnixNano() {
 						err = active.Delete()
 						if err != nil {
