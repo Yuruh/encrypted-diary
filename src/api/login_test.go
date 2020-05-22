@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	asserthelper "github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
@@ -297,6 +298,113 @@ func caseUserCreated(t *testing.T) {
 	}
 }
 
+func TestLoginTFACookieValid(t *testing.T) {
+	assert := asserthelper.New(t)
+	user, _ := SetupUsers()
+
+	user.OTPSecret = "a very secret otp"
+	user.HasRegisteredOTP = true
+	database.Update(&user)
+
+	body := LoginBody{
+		Email:     UserHasAccessEmail,
+		Password:  "azer",
+		SessionDurationMs: 7200000 / 4, // 30 minutes
+	}
+	marsh, _ := json.Marshal(body)
+	context, recorder := BuildEchoContext(marsh, echo.MIMEApplicationJSON)
+
+	// Asks for tfa cause expired + delete expired
+	generatedUuid := uuid.New().String()
+	validCookie := database.TwoFactorsCookie{
+		Uuid:      generatedUuid,
+		IpAddr:    "1.2.4.4",
+		UserAgent: "bond",
+		Expires:   time.Now().Add(time.Hour * 4),
+		UserID:	   user.ID,
+		LastUsed:  time.Now(),
+	}
+
+	validCookie.Create()
+	var response loginResponse
+
+
+	cookie := new(http.Cookie)
+	cookie.Name = "tfa-active"
+	cookie.Value = generatedUuid
+	cookie.Secure = true
+	cookie.HttpOnly = true
+	cookie.Expires = time.Now().Add(24 * time.Hour * 14)
+
+	context.Request().Header.Set("cookie", cookie.String())
+
+	err := Login(context)
+	assert.Nil(err)
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+
+	assert.Equal(0, len(response.TwoFactorsMethods))
+	assert.Greater(len(response.Token), 400)
+}
+
+func TestLoginTFACookieExpired(t *testing.T) {
+	assert := asserthelper.New(t)
+	user, _ := SetupUsers()
+
+	user.OTPSecret = "a very secret otp"
+	user.HasRegisteredOTP = true
+	database.Update(&user)
+
+	body := LoginBody{
+		Email:     UserHasAccessEmail,
+		Password:  "azer",
+		SessionDurationMs: 7200000 / 4, // 30 minutes
+	}
+	marsh, _ := json.Marshal(body)
+	context, recorder := BuildEchoContext(marsh, echo.MIMEApplicationJSON)
+
+	// Asks for tfa cause expired + delete expired
+	generatedUuid := uuid.New().String()
+	expiredCookie := database.TwoFactorsCookie{
+		Uuid:      generatedUuid,
+		IpAddr:    "1.2.4.4",
+		UserAgent: "bond",
+		Expires:   time.Now().Add(time.Hour * 4 * -1), // expired 4 hours ago
+		UserID:	   user.ID,
+		LastUsed:  time.Now(),
+	}
+
+	expiredCookie.Create()
+	var response loginResponse
+
+
+	cookie := new(http.Cookie)
+	cookie.Name = "tfa-active"
+	cookie.Value = generatedUuid
+	cookie.Secure = true
+	cookie.HttpOnly = true
+	cookie.Expires = time.Now().Add(24 * time.Hour * 14) // 2 weeks
+
+	context.Request().Header.Set("cookie", cookie.String())
+
+	err := Login(context)
+	assert.Nil(err)
+
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.Nil(err)
+
+	assert.Equal(1, len(response.TwoFactorsMethods))
+	assert.Equal("OTP", response.TwoFactorsMethods[0])
+	assert.Greater(len(response.Token), 400)
+
+
+	var deletedCookie database.TwoFactorsCookie
+	result := database.GetDB().Where("id = ?", expiredCookie.ID).First(&deletedCookie)
+
+	assert.Equal(true, result.RecordNotFound())
+}
+
 func TestLoginRequestOTP(t *testing.T) {
 	assert := asserthelper.New(t)
 	user, _ := SetupUsers()
@@ -316,6 +424,7 @@ func TestLoginRequestOTP(t *testing.T) {
 	err := Login(context)
 	assert.Nil(err)
 
+	// Asks for tfa cause no cookie sent
 	var response loginResponse
 
 	err = json.Unmarshal(recorder.Body.Bytes(), &response)

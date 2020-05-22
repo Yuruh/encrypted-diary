@@ -55,7 +55,6 @@ func RateLimiterMiddleware(limiter *limiter.Limiter) echo.MiddlewareFunc {
 		return echo.HandlerFunc(func(c echo.Context) error {
 			httpError := tollbooth.LimitByRequest(limiter, c.Response(), c.Request())
 			if httpError != nil {
-				fmt.Println("http errooor")
 				return c.String(httpError.StatusCode, httpError.Message)
 			}
 			return next(c)
@@ -104,7 +103,11 @@ func DeclareRoutes(app *echo.Echo) {
 	// Middleware
 	app.Use(RecoverMiddleware())
 	app.Use(middleware.Logger())
-	app.Use(middleware.CORS())
+
+	corsConfig := middleware.DefaultCORSConfig
+	corsConfig.AllowOrigins = []string{os.Getenv("ALLOWED_ORIGIN")}
+	corsConfig.AllowCredentials = true
+	app.Use(middleware.CORSWithConfig(corsConfig))
 	app.Use(middleware.BodyLimit("1G"))
 	app.Use(RateLimiterMiddleware(BuildRateLimiterConf()))
 

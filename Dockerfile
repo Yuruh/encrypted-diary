@@ -14,11 +14,13 @@ COPY . .
 
 RUN go get github.com/pilu/fresh
 
+EXPOSE 8080
+
 # Build the executable to `/app`. Mark the build as statically linked.
 #RUN go build -o /app .
 
 # Run the compiled binary.
 #ENTRYPOINT ["/app"]
 
-# Run with live reload
+# Run with live reload, for dev purposes.
 CMD ["fresh"]

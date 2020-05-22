@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Yuruh/encrypted-diary/src/database"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/labstack/echo/v4"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -101,15 +102,40 @@ func Login(context echo.Context) error {
 	} else {
 		//2FA enabled
 		if user.HasRegisteredOTP {
+			var active database.TwoFactorsCookie
+			cookie, err := context.Cookie("tfa-active")
+			// Cookie found
+			if err == nil {
+				result := database.GetDB().
+					Where("user_id = ?", user.ID).
+					Where("uuid = ?", cookie.Value).
+					Find(&active)
+				if !result.RecordNotFound() {
+					// Todo also check IP addr (we want to ask again if the ip addr changed)
+					if time.Now().UnixNano() > active.Expires.UnixNano() {
+						err = active.Delete()
+						if err != nil {
+							sentry.CaptureException(err)
+						}
+					} else {
+						active.LastUsed = time.Now()
+						err = database.Update(&active)
+						if err != nil {
+							sentry.CaptureException(err)
+						}
+						ss := BuildJwtToken(user, parsedBody.SessionDurationMs, []byte(os.Getenv("ACCESS_TOKEN_SECRET")))
+						return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": nil})
+					}
+				}
+			}
 			methods := [1]string{"OTP"}
 			// We generate a token that cannot be used to authenticate request but will be used to validate 2FA
 			ss := BuildJwtToken(user, parsedBody.SessionDurationMs, []byte(os.Getenv("2FA_TOKEN_SECRET")))
 			return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": methods})
-		} else {
-			ss := BuildJwtToken(user, parsedBody.SessionDurationMs, []byte(os.Getenv("ACCESS_TOKEN_SECRET")))
-			return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": nil})
-
 		}
+		ss := BuildJwtToken(user, parsedBody.SessionDurationMs, []byte(os.Getenv("ACCESS_TOKEN_SECRET")))
+		return context.JSON(http.StatusOK, map[string]interface{}{"token": ss, "two_factors_methods": nil})
+
 	}
 }
 
