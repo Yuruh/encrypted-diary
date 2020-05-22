@@ -22,7 +22,7 @@ func TestGetMe(t *testing.T) {
 	generatedUuid := uuid.New().String()
 	validCookie := database.TwoFactorsCookie{
 		Uuid:      generatedUuid,
-		IpAddr:    "1.2.4.4",
+		IpAddr:    "1.2.3.4",
 		UserAgent: "bond",
 		Expires:   time.Now().Add(time.Hour * 4),
 		UserID:	   user.ID,
@@ -42,6 +42,7 @@ func TestGetMe(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(UserHasAccessEmail, response.User.Email)
 	if assert.Equal(1, len(response.User.TwoFactorsCookies)) {
-		assert.Equal(generatedUuid, response.User.TwoFactorsCookies[0].Uuid)
+		assert.Equal("1.2.3.4", response.User.TwoFactorsCookies[0].IpAddr)
+		assert.Equal(validCookie.ID, response.User.TwoFactorsCookies[0].ID)
 	}
 }
